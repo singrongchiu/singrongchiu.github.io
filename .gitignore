@@ -3,3 +3,7 @@
 *.tar.br
 *.tar.gz
 *.tar.zst
+
+tests/__pycache__/
+
+extracted/
