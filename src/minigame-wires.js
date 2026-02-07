@@ -7,6 +7,7 @@
     { key: "blue", label: "Blue", color: "#4f8fdc" },
     { key: "green", label: "Green", color: "#49a55f" }
   ];
+  var WIRE_STROKE_WIDTH = 6;
   var SOCKET_EXPECTED_WIRE = [2, 0, 1];
   var NOOP = function () {};
 
@@ -137,10 +138,10 @@
 
   function createLineMarkup() {
     return (
-      "<line class='wires-line' data-wire-line='0' stroke='" + WIRE_DEFS[0].color + "' stroke-width='8' stroke-linecap='round'></line>" +
-      "<line class='wires-line' data-wire-line='1' stroke='" + WIRE_DEFS[1].color + "' stroke-width='8' stroke-linecap='round'></line>" +
-      "<line class='wires-line' data-wire-line='2' stroke='" + WIRE_DEFS[2].color + "' stroke-width='8' stroke-linecap='round'></line>" +
-      "<line class='wires-line wires-active-line' data-active-wire='1' stroke='#7d94a8' stroke-width='8' stroke-linecap='round'></line>"
+      "<line class='wires-line' data-wire-line='0' stroke='" + WIRE_DEFS[0].color + "' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>" +
+      "<line class='wires-line' data-wire-line='1' stroke='" + WIRE_DEFS[1].color + "' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>" +
+      "<line class='wires-line' data-wire-line='2' stroke='" + WIRE_DEFS[2].color + "' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>" +
+      "<line class='wires-line wires-active-line' data-active-wire='1' stroke='#7d94a8' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>"
     );
   }
 
@@ -420,6 +421,7 @@
     WIRE_DEFS: WIRE_DEFS.map(function (wire) {
       return { key: wire.key, label: wire.label, color: wire.color };
     }),
+    WIRE_STROKE_WIDTH: WIRE_STROKE_WIDTH,
     SOCKET_EXPECTED_WIRE: SOCKET_EXPECTED_WIRE.slice(),
     createDisconnectedLinks: createDisconnectedLinks,
     countConnectedWires: countConnectedWires,
