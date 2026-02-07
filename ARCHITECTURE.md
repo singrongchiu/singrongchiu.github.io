@@ -9,8 +9,8 @@ Build a fully playable, self-contained mobile browser game (offline) with a tota
 2) Offline: No runtime network requests of any kind (no remote fonts, images, scripts, analytics, fetch/XHR/WebSocket).
 3) Mobile-first: Must play well in a mobile browser with touch input.
 4) Learnability: Within 1–2 minutes, a player should infer how to interact and start playing without any external verbal instructions from the assistant. Use visual affordances (icons, arrows, animated hand cues, highlighting) instead of long text.
-5) Session length: The entire experience ends after 60 seconds (hard stop). After time ends, show the final score and a clear “restart” affordance.
-6) Scoring: Each mini-game contributes exactly 1 point if completed successfully; 0 otherwise. Total score is the sum across mini-games encountered during the 60 seconds.
+5) Session length: The entire experience ends after 90 seconds (hard stop). After time ends, show the final score and a clear “restart” affordance.
+6) Scoring: Each mini-game contributes exactly 1 point if completed successfully; 0 otherwise. Total score is the sum across mini-games encountered during the 90 seconds.
 7) Skip mechanic: The player can always swipe down to skip the current mini-game and advance immediately to the next one.
 8) Feedback: On success, show a green “Correct!” popup above the game card AND show a brief confetti effect. Also include a large, obvious indicator that suggests swiping down to continue/skip.
 
