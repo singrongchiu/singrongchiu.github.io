@@ -7,6 +7,7 @@
   var vanishingApi = window.VanishingPathMiniGame || null;
   var plantApi = window.PlantWaterMiniGame || null;
   var cookingApi = window.CookingMiniGame || null;
+  var dinosaurApi = window.DinosaurMiniGame || null;
 
   function makePlaceholder(game) {
     return {
@@ -92,6 +93,17 @@
         return makePlaceholder(game);
       }
     }
+    if (
+      game.id === "dinosaur" &&
+      dinosaurApi &&
+      typeof dinosaurApi.createDinosaurGame === "function"
+    ) {
+      try {
+        return dinosaurApi.createDinosaurGame();
+      } catch (err) {
+        return makePlaceholder(game);
+      }
+    }
     return makePlaceholder(game);
   }
 
@@ -101,7 +113,8 @@
     { id: "pipe", label: "Pipe Grid", weight: 1, icon: "\ud83e\udde9", hint: "Pipe mini-game slot" },
     { id: "vanish", label: "Vanishing Path", weight: 1, icon: "\ud83e\udde0", hint: "Vanishing path mini-game slot" },
     { id: "plant", label: "Plant Watering", weight: 1, icon: "\ud83c\udf31", hint: "Plant mini-game slot" },
-    { id: "cooking", label: "Ingredient Combining", weight: 1, icon: "\ud83e\uddc1", hint: "Cooking mini-game slot" }
+    { id: "cooking", label: "Ingredient Combining", weight: 1, icon: "\ud83e\uddc1", hint: "Cooking mini-game slot" },
+    { id: "dinosaur", label: "Dino Petting", weight: 1, icon: "\ud83e\udd96", hint: "Dinosaur mini-game slot" }
   ].map(buildGame);
 
   if (typeof module !== "undefined" && module.exports) {

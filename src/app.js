@@ -11,6 +11,7 @@
   var ROUND_MS = 7000;
   var ENGAGED_ROUND_MS = 25000;
   var PLANT_ROUND_MS = 15000;
+  var COOKING_ROUND_MS = 20000;
   var SESSION_SECONDS = 90;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
   var BG_START_1 = [215, 239, 193];
@@ -24,7 +25,8 @@
     status: document.getElementById("status"),
     card: document.getElementById("card"),
     feedback: document.getElementById("feedback"),
-    confetti: document.getElementById("confetti")
+    confetti: document.getElementById("confetti"),
+    swipeCue: document.querySelector(".swipe-cue")
   };
 
   var fallback = {
@@ -61,7 +63,17 @@
     if (gameId === "plant") {
       return PLANT_ROUND_MS;
     }
+    if (gameId === "cooking") {
+      return COOKING_ROUND_MS;
+    }
     return ROUND_MS;
+  }
+
+  function gameAllowsSkip(game) {
+    if (!game) {
+      return true;
+    }
+    return game.allowSkip !== false;
   }
 
   function safeGames() {
@@ -166,11 +178,14 @@
 
     var foot = document.createElement("div");
     foot.className = "hint";
-    foot.textContent = "Swipe up anytime to skip";
+    foot.textContent = gameAllowsSkip(game) ? "Swipe up anytime to skip" : "";
 
     el.card.appendChild(head);
     el.card.appendChild(body);
     el.card.appendChild(foot);
+    if (el.swipeCue) {
+      el.swipeCue.style.visibility = gameAllowsSkip(game) ? "visible" : "hidden";
+    }
     void el.card.offsetWidth;
     el.card.classList.add("enter");
 
@@ -279,6 +294,9 @@
     state.running = false;
     stopTimers();
     clearCard();
+    if (el.swipeCue) {
+      el.swipeCue.style.visibility = "visible";
+    }
     el.status.textContent = reason === "timeup" ? "Time is up" : "Session ended";
 
     var head = document.createElement("div");
@@ -326,6 +344,9 @@
 
   function handleSkipGesture() {
     if (!state.running || !state.current) {
+      return;
+    }
+    if (!gameAllowsSkip(state.current)) {
       return;
     }
     nextCard("skip");
