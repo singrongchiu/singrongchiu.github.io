@@ -4,6 +4,7 @@
   var burgerApi = window.BurgerMiniGame || null;
   var lightbulbApi = window.LightbulbMiniGame || null;
   var pipeApi = window.PipeTurningMiniGame || null;
+  var vanishingApi = window.VanishingPathMiniGame || null;
   var plantApi = window.PlantWaterMiniGame || null;
 
   function makePlaceholder(game) {
@@ -58,6 +59,17 @@
       }
     }
     if (
+      game.id === "vanish" &&
+      vanishingApi &&
+      typeof vanishingApi.createVanishingPathGame === "function"
+    ) {
+      try {
+        return vanishingApi.createVanishingPathGame();
+      } catch (err) {
+        return makePlaceholder(game);
+      }
+    }
+    if (
       game.id === "plant" &&
       plantApi &&
       typeof plantApi.createPlantWateringGame === "function"
@@ -75,6 +87,7 @@
     { id: "burger", label: "Burger Flipping", weight: 1, icon: "\ud83c\udf54", hint: "Burger mini-game slot" },
     { id: "bulb", label: "Lamp Twist", weight: 1, icon: "\ud83d\udca1", hint: "Lightbulb mini-game slot" },
     { id: "pipe", label: "Pipe Grid", weight: 1, icon: "\ud83e\udde9", hint: "Pipe mini-game slot" },
+    { id: "vanish", label: "Vanishing Path", weight: 1, icon: "\ud83e\udde0", hint: "Vanishing path mini-game slot" },
     { id: "plant", label: "Plant Watering", weight: 1, icon: "\ud83c\udf31", hint: "Plant mini-game slot" }
   ].map(buildGame);
 

@@ -642,6 +642,98 @@
     .pipe-chip {
       margin-top: 0;
     }
+    .vanish-game {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      align-items: end;
+      justify-items: center;
+      gap: 10px;
+    }
+    .vanish-scene {
+      width: min(300px, 95%);
+      height: 100%;
+      max-height: 238px;
+      border: 3px solid #5e6180;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 30% 20%, #2f3955 0%, #1d2236 45%, #101423 100%);
+      box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      display: grid;
+      place-items: center;
+    }
+    .vanish-grid {
+      width: min(236px, 100%);
+      height: min(236px, 100%);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 7px;
+    }
+    .vanish-tile {
+      position: relative;
+      border: 2px solid #5a5f75;
+      border-radius: 10px;
+      background: linear-gradient(#868ca5, #62687f);
+      box-shadow:
+        inset 0 -3px 0 rgba(0, 0, 0, 0.22),
+        0 0 0 1px rgba(255, 255, 255, 0.06);
+      padding: 0;
+      touch-action: manipulation;
+      transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .1s ease;
+    }
+    .vanish-tile:active {
+      transform: scale(0.97);
+    }
+    .vanish-tile.is-safe-preview,
+    .vanish-tile.is-revealed {
+      border-color: #4eaf6d;
+      background: linear-gradient(#80d993, #54a967);
+      box-shadow:
+        inset 0 -3px 0 rgba(0, 0, 0, 0.18),
+        0 0 10px rgba(111, 230, 149, 0.35);
+    }
+    .vanish-tile.is-pit-flash {
+      border-color: #c24f4f;
+      background: linear-gradient(#ee8484, #cc5f5f);
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22);
+    }
+    .vanish-tile.is-avatar::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52%;
+      height: 52%;
+      border-radius: 50%;
+      border: 2px solid #2f5635;
+      background: radial-gradient(circle at 38% 36%, #fdf2cf 0 25%, #d2bc83 65%, #9f8657 100%);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+    }
+    .vanish-marker {
+      position: absolute;
+      right: 6px;
+      top: 4px;
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 900;
+      color: #f2f5ff;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+    }
+    .vanish-tile.is-start .vanish-marker {
+      color: #fff6d2;
+    }
+    .vanish-tile.is-goal .vanish-marker {
+      color: #ffe07e;
+      font-size: 12px;
+    }
+    .vanish-chip {
+      margin-top: 0;
+    }
     .btn {
       border: 2px solid #2f5f39;
       background: linear-gradient(#60b86c, #3b944d);
@@ -726,6 +818,7 @@
   <script src="./minigame-burger.js"></script>
   <script src="./minigame-lightbulb.js"></script>
   <script src="./minigame-pipe.js"></script>
+  <script src="./minigame-vanishing.js"></script>
   <script src="./minigame-plant.js"></script>
   <script src="./minigames.js"></script>
   <script src="./app.js"></script>
