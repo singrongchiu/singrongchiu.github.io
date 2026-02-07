@@ -5,19 +5,42 @@
   var MEMORIZE_MS = 750;
   var PIT_FLASH_MS = 260;
   var MIN_START_GOAL_DISTANCE = 3;
+  var TOTAL_TILES = GRID_SIZE * GRID_SIZE;
+  var HINT_MEM = "Memorize the path";
+  var HINT_PLAY = "Tap adjacent stones";
+  var HINT_DONE = "Path crossed!";
+  var NOOP = function () {};
+  var TILE_HTML = "<button type='button' class='vanish-tile' aria-label='Step tile'><span class='vanish-marker'></span></button>";
+
+  var BOARD_HTML = (function () {
+    var html = "";
+    var i = 0;
+    for (i = 0; i < TOTAL_TILES; i += 1) {
+      html += TILE_HTML;
+    }
+    return html;
+  }());
 
   function tileKey(row, col) {
     return String(row) + ":" + String(col);
+  }
+
+  function toIndex(row, col) {
+    return (row << 2) + col;
   }
 
   function isAdjacent(a, b) {
     return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
   }
 
+  function isAdjacentIndex(a, b) {
+    return Math.abs((a >> 2) - (b >> 2)) + Math.abs((a & 3) - (b & 3)) === 1;
+  }
+
   function randomInt(max, rng) {
     var random = typeof rng === "function" ? rng : Math.random;
     var limit = Math.max(1, Number(max) || 1);
-    return Math.floor(random() * limit) % limit;
+    return Math.floor(random() * limit);
   }
 
   function pickRandomPosition(rng) {
@@ -33,25 +56,11 @@
 
   function pickStartAndGoal(rng) {
     var random = typeof rng === "function" ? rng : Math.random;
-    var attempts = 0;
     var start = pickRandomPosition(random);
     var goal = pickRandomPosition(random);
-
-    while (
-      attempts < 40 &&
-      (
-        tileKey(start.row, start.col) === tileKey(goal.row, goal.col) ||
-        manhattanDistance(start, goal) < MIN_START_GOAL_DISTANCE
-      )
-    ) {
-      goal = pickRandomPosition(random);
-      attempts += 1;
-    }
-
-    while (tileKey(start.row, start.col) === tileKey(goal.row, goal.col)) {
+    while (toIndex(start.row, start.col) === toIndex(goal.row, goal.col)) {
       goal = pickRandomPosition(random);
     }
-
     return {
       startPos: start,
       goalPos: goal
@@ -60,50 +69,41 @@
 
   function buildShortestPath(startPos, goalPos, rng) {
     var random = typeof rng === "function" ? rng : Math.random;
-    var path = [{ row: startPos.row, col: startPos.col }];
     var row = startPos.row;
     var col = startPos.col;
+    var goalRow = goalPos.row;
+    var goalCol = goalPos.col;
+    var path = [{ row: row, col: col }];
     var preferRowStep = randomInt(2, random) === 0;
 
-    while (row !== goalPos.row || col !== goalPos.col) {
-      var canStepRow = row !== goalPos.row;
-      var canStepCol = col !== goalPos.col;
-      var stepRow = false;
-
-      if (canStepRow && canStepCol) {
-        stepRow = preferRowStep;
-      } else {
-        stepRow = canStepRow;
-      }
-
-      if (stepRow) {
-        row += row < goalPos.row ? 1 : -1;
-      } else {
-        col += col < goalPos.col ? 1 : -1;
-      }
-
-      path.push({ row: row, col: col });
-
-      if (canStepRow && canStepCol) {
+    while (row !== goalRow || col !== goalCol) {
+      if (row !== goalRow && col !== goalCol) {
+        if (preferRowStep) {
+          row += row < goalRow ? 1 : -1;
+        } else {
+          col += col < goalCol ? 1 : -1;
+        }
         preferRowStep = !preferRowStep;
+      } else if (row !== goalRow) {
+        row += row < goalRow ? 1 : -1;
+      } else {
+        col += col < goalCol ? 1 : -1;
       }
+      path.push({ row: row, col: col });
     }
-
     return path;
   }
 
   function createRandomLayout(rng) {
     var random = typeof rng === "function" ? rng : Math.random;
     var attempt = 0;
-
     for (attempt = 0; attempt < 24; attempt += 1) {
       var picked = pickStartAndGoal(random);
-      var path = buildShortestPath(picked.startPos, picked.goalPos, random);
-      if (path.length >= MIN_START_GOAL_DISTANCE + 1) {
+      if (manhattanDistance(picked.startPos, picked.goalPos) >= MIN_START_GOAL_DISTANCE) {
         return {
           startPos: picked.startPos,
           goalPos: picked.goalPos,
-          path: path
+          path: buildShortestPath(picked.startPos, picked.goalPos, random)
         };
       }
     }
@@ -119,26 +119,12 @@
 
   function createSafeLookup(path) {
     var lookup = {};
-    path.forEach(function (node) {
+    var i = 0;
+    for (i = 0; i < path.length; i += 1) {
+      var node = path[i];
       lookup[tileKey(node.row, node.col)] = true;
-    });
-    return lookup;
-  }
-
-  function createBoardMarkup() {
-    var html = "";
-    var row = 0;
-    var col = 0;
-
-    for (row = 0; row < GRID_SIZE; row += 1) {
-      for (col = 0; col < GRID_SIZE; col += 1) {
-        html +=
-          "<button type='button' class='vanish-tile' data-row='" + row + "' data-col='" + col + "' aria-label='Step tile'>" +
-          "<span class='vanish-marker'></span>" +
-          "</button>";
-      }
     }
-    return html;
+    return lookup;
   }
 
   function createMiniGamePlugin() {
@@ -148,32 +134,36 @@
       initialWeight: 1,
       mount: function (mount, engine) {
         var api = engine || {};
-        var complete = typeof api.complete === "function"
-          ? api.complete
-          : function () {};
-        var registerControl = typeof api.registerControl === "function"
-          ? api.registerControl
-          : function () {};
+        var complete = typeof api.complete === "function" ? api.complete : NOOP;
+        var registerControl = typeof api.registerControl === "function" ? api.registerControl : NOOP;
         var layout = createRandomLayout();
         var startPos = layout.startPos;
         var goalPos = layout.goalPos;
         var path = layout.path;
-        var safeTiles = createSafeLookup(path);
-        var revealedTiles = {};
-        revealedTiles[tileKey(startPos.row, startPos.col)] = true;
-        var avatar = { row: startPos.row, col: startPos.col };
-        var phase = "memorize";
+        var startIndex = toIndex(startPos.row, startPos.col);
+        var goalIndex = toIndex(goalPos.row, goalPos.col);
+        var safeTiles = new Uint8Array(TOTAL_TILES);
+        var revealed = new Uint8Array(TOTAL_TILES);
+        var avatarIndex = startIndex;
+        var inMemorize = true;
         var done = false;
-        var pitFlashKey = "";
-        var memorizeTimer = null;
-        var flashTimer = null;
+        var pitFlashIndex = -1;
+        var memorizeTimer = 0;
+        var flashTimer = 0;
+        var i = 0;
+
+        for (i = 0; i < path.length; i += 1) {
+          var node = path[i];
+          safeTiles[toIndex(node.row, node.col)] = 1;
+        }
+        revealed[startIndex] = 1;
 
         mount.innerHTML =
           "<div class='vanish-game'>" +
-          "<div class='chip mini-instruction vanish-chip'>Memorize the path</div>" +
+          "<div class='chip mini-instruction vanish-chip'>" + HINT_MEM + "</div>" +
           "<div class='vanish-scene'>" +
           "<div class='vanish-grid'>" +
-          createBoardMarkup() +
+          BOARD_HTML +
           "</div>" +
           "</div>" +
           "</div>";
@@ -183,56 +173,38 @@
         var tiles = Array.prototype.slice.call(mount.querySelectorAll(".vanish-tile"));
         registerControl(grid);
 
-        function render() {
-          var avatarKey = tileKey(avatar.row, avatar.col);
-          tiles.forEach(function (tile) {
-            var row = Number(tile.getAttribute("data-row"));
-            var col = Number(tile.getAttribute("data-col"));
-            var key = tileKey(row, col);
-            var isSafe = Boolean(safeTiles[key]);
-            var marker = tile.querySelector(".vanish-marker");
-
-            tile.classList.toggle("is-safe-preview", phase === "memorize" && isSafe);
-            tile.classList.toggle("is-revealed", Boolean(revealedTiles[key]));
-            tile.classList.toggle("is-avatar", avatarKey === key);
-            tile.classList.toggle("is-start", row === startPos.row && col === startPos.col);
-            tile.classList.toggle("is-goal", row === goalPos.row && col === goalPos.col);
-            tile.classList.toggle("is-pit-flash", pitFlashKey === key);
-
-            if (!marker) {
-              return;
-            }
-            if (row === goalPos.row && col === goalPos.col) {
-              marker.textContent = "G";
-            } else if (row === startPos.row && col === startPos.col) {
-              marker.textContent = "S";
-            } else {
-              marker.textContent = "";
-            }
-          });
-
-          if (!hint) {
-            return;
-          }
-          if (done) {
-            hint.textContent = "Path crossed!";
-          } else if (phase === "memorize") {
-            hint.textContent = "Memorize the path";
+        for (i = 0; i < tiles.length; i += 1) {
+          var tile = tiles[i];
+          var marker = tile.querySelector(".vanish-marker");
+          tile.__idx = i;
+          if (i === startIndex) {
+            tile.classList.add("is-start");
+            marker.textContent = "S";
+          } else if (i === goalIndex) {
+            tile.classList.add("is-goal");
+            marker.textContent = "G";
           } else {
-            hint.textContent = "Tap adjacent stones";
+            marker.textContent = "";
           }
         }
 
-        function clearPitFlash() {
-          pitFlashKey = "";
-          render();
+        function render() {
+          var idx = 0;
+          for (idx = 0; idx < tiles.length; idx += 1) {
+            var tile = tiles[idx];
+            tile.classList.toggle("is-safe-preview", inMemorize && !!safeTiles[idx]);
+            tile.classList.toggle("is-revealed", !!revealed[idx]);
+            tile.classList.toggle("is-avatar", avatarIndex === idx);
+            tile.classList.toggle("is-pit-flash", pitFlashIndex === idx);
+          }
+
+          hint.textContent = done ? HINT_DONE : (inMemorize ? HINT_MEM : HINT_PLAY);
         }
 
         function onPointerDown(evt) {
-          if (!evt.target || !evt.target.closest(".vanish-tile")) {
-            return;
+          if (evt.target && evt.target.closest(".vanish-tile")) {
+            evt.stopPropagation();
           }
-          evt.stopPropagation();
         }
 
         function onClick(evt) {
@@ -241,38 +213,35 @@
             return;
           }
           evt.stopPropagation();
-          if (done || phase === "memorize") {
+          if (done || inMemorize) {
             return;
           }
 
-          var row = Number(tile.getAttribute("data-row"));
-          var col = Number(tile.getAttribute("data-col"));
-          var next = { row: row, col: col };
-
-          if (!isAdjacent(avatar, next)) {
+          var nextIndex = tile.__idx;
+          if (!isAdjacentIndex(avatarIndex, nextIndex)) {
             return;
           }
 
-          var key = tileKey(row, col);
-          if (!safeTiles[key]) {
-            pitFlashKey = key;
+          if (!safeTiles[nextIndex]) {
+            pitFlashIndex = nextIndex;
             render();
             window.clearTimeout(flashTimer);
-            flashTimer = window.setTimeout(clearPitFlash, PIT_FLASH_MS);
+            flashTimer = window.setTimeout(function () {
+              pitFlashIndex = -1;
+              render();
+            }, PIT_FLASH_MS);
             return;
           }
 
-          avatar = next;
-          revealedTiles[key] = true;
-          clearPitFlash();
-
-          if (avatar.row === goalPos.row && avatar.col === goalPos.col) {
-            done = true;
-            render();
-            complete();
-            return;
-          }
+          avatarIndex = nextIndex;
+          revealed[nextIndex] = 1;
+          pitFlashIndex = -1;
+          done = avatarIndex === goalIndex;
           render();
+
+          if (done) {
+            complete();
+          }
         }
 
         grid.addEventListener("pointerdown", onPointerDown);
@@ -280,7 +249,7 @@
 
         render();
         memorizeTimer = window.setTimeout(function () {
-          phase = "play";
+          inMemorize = false;
           render();
         }, MEMORIZE_MS);
 
