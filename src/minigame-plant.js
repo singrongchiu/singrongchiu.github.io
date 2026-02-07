@@ -35,7 +35,7 @@
         didWater: false,
         states: list,
         successCount: safeCount,
-        completed: safeCount >= REQUIRED_WATERINGS
+        completed: safeCount >= REQUIRED_WATERINGS && countDryPlants(list) === 0
       };
     }
     if (list[targetIndex]) {
@@ -43,7 +43,7 @@
         didWater: false,
         states: list,
         successCount: safeCount,
-        completed: safeCount >= REQUIRED_WATERINGS
+        completed: safeCount >= REQUIRED_WATERINGS && countDryPlants(list) === 0
       };
     }
 
@@ -54,7 +54,7 @@
       didWater: true,
       states: nextStates,
       successCount: nextCount,
-      completed: nextCount >= REQUIRED_WATERINGS
+      completed: nextCount >= REQUIRED_WATERINGS && countDryPlants(nextStates) === 0
     };
   }
 
@@ -112,6 +112,7 @@
 
         var slots = Array.prototype.slice.call(mount.querySelectorAll(".plant-slot"));
         var can = mount.querySelector(".watering-can");
+        var spout = mount.querySelector(".can-spout");
 
         function renderPlants() {
           slots.forEach(function (slot, i) {
@@ -146,23 +147,63 @@
           );
         }
 
-        function findDroppedPlant(nozzlePoint) {
+        function inflateRect(rect, padding) {
+          return {
+            left: rect.left - padding,
+            right: rect.right + padding,
+            top: rect.top - padding,
+            bottom: rect.bottom + padding
+          };
+        }
+
+        function findDroppedPlant(dropPoints) {
+          var points = Array.isArray(dropPoints) ? dropPoints : [];
           var i = 0;
+          var p = 0;
           for (i = 0; i < slots.length; i += 1) {
-            if (pointInsideRect(nozzlePoint, slots[i].getBoundingClientRect())) {
-              return i;
+            var slot = slots[i];
+            var marker = slot.querySelector(".plant-state");
+            var pot = slot.querySelector(".plant-pot");
+            var markerRect = marker ? inflateRect(marker.getBoundingClientRect(), 12) : null;
+            var potRect = pot ? inflateRect(pot.getBoundingClientRect(), 16) : null;
+            for (p = 0; p < points.length; p += 1) {
+              var point = points[p];
+              var hitMarker = markerRect && pointInsideRect(point, markerRect);
+              var hitPot = potRect && pointInsideRect(point, potRect);
+              if (hitMarker || hitPot) {
+                return i;
+              }
             }
           }
           return -1;
         }
 
+        function buildDropPoints(canRect, spoutRect) {
+          var points = [];
+          if (spoutRect) {
+            points.push({
+              x: spoutRect.right,
+              y: spoutRect.top + (spoutRect.height * 0.5)
+            });
+          }
+          points.push(
+            {
+              x: canRect.left + (canRect.width * 0.5),
+              y: canRect.top + (canRect.height * 0.5)
+            },
+            {
+              x: canRect.left + (canRect.width * 0.8),
+              y: canRect.top + (canRect.height * 0.55)
+            }
+          );
+          return points;
+        }
+
         function finishDrop() {
           var canRect = can.getBoundingClientRect();
-          var nozzlePoint = {
-            x: canRect.right - 4,
-            y: canRect.top + (canRect.height * 0.35)
-          };
-          var target = findDroppedPlant(nozzlePoint);
+          var spoutRect = spout ? spout.getBoundingClientRect() : null;
+          var dropPoints = buildDropPoints(canRect, spoutRect);
+          var target = findDroppedPlant(dropPoints);
           if (target < 0 || done) {
             resetCan();
             return;
@@ -174,9 +215,16 @@
           renderPlants();
           resetCan();
 
-          if (next.didWater && next.completed && !done) {
+          if (
+            next.didWater &&
+            !done &&
+            wateredCount >= REQUIRED_WATERINGS &&
+            countDryPlants(states) === 0
+          ) {
             done = true;
-            onSuccess();
+            window.setTimeout(function () {
+              onSuccess();
+            }, 3000);
           }
         }
 

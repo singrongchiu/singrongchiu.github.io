@@ -10,6 +10,7 @@
 
   var ROUND_MS = 7000;
   var ENGAGED_ROUND_MS = 25000;
+  var PLANT_ROUND_MS = 15000;
   var SESSION_SECONDS = 90;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
   var BG_START_1 = [215, 239, 193];
@@ -55,6 +56,13 @@
   };
 
   var swipe = { active: false, x: 0, y: 0, t: 0, id: -1 };
+
+  function getRoundDurationMs(gameId) {
+    if (gameId === "plant") {
+      return PLANT_ROUND_MS;
+    }
+    return ROUND_MS;
+  }
 
   function safeGames() {
     return registry.length ? registry : [fallback];
@@ -235,12 +243,12 @@
 
     state.current = game;
     state.lastId = game.id;
-    state.roundMaxMs = ROUND_MS;
+    state.roundMaxMs = getRoundDurationMs(game.id);
     renderCard(game);
     el.status.textContent = "Running";
     state.roundTimer = window.setTimeout(function () {
       nextCard("round-timeout");
-    }, ROUND_MS);
+    }, state.roundMaxMs);
   }
 
   function extendRoundOnEngagement() {
@@ -334,12 +342,19 @@
     }, true);
 
     el.card.addEventListener("pointerdown", function (evt) {
+      var target = evt.target;
+      var gameControl = target && target.closest(".card-body button");
+      if (gameControl) {
+        swipe.active = false;
+        swipe.id = -1;
+        return;
+      }
       swipe.active = true;
       swipe.x = evt.clientX;
       swipe.y = evt.clientY;
       swipe.t = Date.now();
       swipe.id = evt.pointerId;
-    });
+    }, true);
 
     function resetSwipe() {
       swipe.active = false;
@@ -354,15 +369,15 @@
       var dy = evt.clientY - swipe.y;
       var dt = Date.now() - swipe.t;
       resetSwipe();
-      if (dt > 900) {
+      if (dt > 800) {
         return;
       }
-      if (dy < -45 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+      if (dy < -90 && Math.abs(dy) > Math.abs(dx) * 1.3) {
         handleSkipGesture();
       }
-    });
+    }, true);
 
-    el.card.addEventListener("pointercancel", resetSwipe);
+    el.card.addEventListener("pointercancel", resetSwipe, true);
   }
 
   function renderStart() {

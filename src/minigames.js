@@ -6,6 +6,7 @@
   var pipeApi = window.PipeTurningMiniGame || null;
   var vanishingApi = window.VanishingPathMiniGame || null;
   var plantApi = window.PlantWaterMiniGame || null;
+  var cookingApi = window.CookingMiniGame || null;
 
   function makePlaceholder(game) {
     return {
@@ -80,6 +81,17 @@
         return makePlaceholder(game);
       }
     }
+    if (
+      game.id === "cooking" &&
+      cookingApi &&
+      typeof cookingApi.createCookingGame === "function"
+    ) {
+      try {
+        return cookingApi.createCookingGame();
+      } catch (err) {
+        return makePlaceholder(game);
+      }
+    }
     return makePlaceholder(game);
   }
 
@@ -88,7 +100,8 @@
     { id: "bulb", label: "Lamp Twist", weight: 1, icon: "\ud83d\udca1", hint: "Lightbulb mini-game slot" },
     { id: "pipe", label: "Pipe Grid", weight: 1, icon: "\ud83e\udde9", hint: "Pipe mini-game slot" },
     { id: "vanish", label: "Vanishing Path", weight: 1, icon: "\ud83e\udde0", hint: "Vanishing path mini-game slot" },
-    { id: "plant", label: "Plant Watering", weight: 1, icon: "\ud83c\udf31", hint: "Plant mini-game slot" }
+    { id: "plant", label: "Plant Watering", weight: 1, icon: "\ud83c\udf31", hint: "Plant mini-game slot" },
+    { id: "cooking", label: "Ingredient Combining", weight: 1, icon: "\ud83e\uddc1", hint: "Cooking mini-game slot" }
   ].map(buildGame);
 
   if (typeof module !== "undefined" && module.exports) {
