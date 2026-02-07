@@ -8,7 +8,7 @@
   var createSessionClock = core.createSessionClock;
   var clamp = core.clamp;
 
-  var ROUND_MS = 7000;
+  var ROUND_MS = 12000;
   var SESSION_SECONDS = 90;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
   var BG_START_1 = [215, 239, 193];
