@@ -56,10 +56,11 @@ fi
 
 if command -v terser >/dev/null 2>&1; then
   terser "${TMP_JS}" \
-    -c passes=3,toplevel=true,ecma=2020 \
+    -c passes=3,toplevel=true,ecma=2021 \
     -m toplevel=true \
     --mangle-props regex=/^_/ \
     --comments false \
+    -f ecma=2021 \
     -o "${FINAL_JS}"
 else
   cp "${TMP_JS}" "${FINAL_JS}"
@@ -71,8 +72,19 @@ rm -f "${TMP_JS}"
 cp "${SRC_DIR}/index.html" "${COMB_INDEX}"
 perl -0pi -e 's#(?:\s*<script\s+src="\./[^"]+\.js"></script>\s*)+(?=\s*</body>)#\n  <script src="./combined.js"></script>\n#s' "${COMB_INDEX}"
 
-# Minify HTML/CSS without external dependencies.
-node - "${COMB_INDEX}" <<'NODE'
+# Minify HTML/CSS. Prefer html-minifier-terser if available.
+if command -v html-minifier-terser >/dev/null 2>&1; then
+  html-minifier-terser \
+    --collapse-whitespace \
+    --remove-comments \
+    --remove-optional-tags \
+    --minify-css true \
+    --minify-js true \
+    "${COMB_INDEX}" -o "${COMB_INDEX}"
+else
+  # Fallback: minimal inlined CSS and HTML whitespace minify.
+  echo "Warning: html-minifier-terser not found; using node fallback" >&2
+  node - "${COMB_INDEX}" <<'NODE'
 const fs = require("fs");
 const htmlPath = process.argv[2];
 let html = fs.readFileSync(htmlPath, "utf8");
@@ -92,6 +104,7 @@ html = html.replace(/>\s+</g, "><").trim() + "\n";
 
 fs.writeFileSync(htmlPath, html);
 NODE
+fi
 
 node --check "${FINAL_JS}"
 
@@ -106,4 +119,3 @@ echo "  Combined JS : ${FINAL_JS}"
 echo "  Entry HTML  : ${COMB_INDEX}"
 echo "  Archive     : ${OUT_ARCHIVE}"
 stat -f "  Archive size: %z bytes" "${OUT_ARCHIVE}"
-
