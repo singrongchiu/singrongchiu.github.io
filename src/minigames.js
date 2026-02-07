@@ -3,6 +3,7 @@
 
   var burgerApi = window.BurgerMiniGame || null;
   var lightbulbApi = window.LightbulbMiniGame || null;
+  var pipeApi = window.PipeTurningMiniGame || null;
   var plantApi = window.PlantWaterMiniGame || null;
 
   function makePlaceholder(game) {
@@ -41,6 +42,17 @@
     ) {
       try {
         return lightbulbApi.createLightbulbGame();
+      } catch (err) {
+        return makePlaceholder(game);
+      }
+    }
+    if (
+      game.id === "pipe" &&
+      pipeApi &&
+      typeof pipeApi.createPipeTurningGame === "function"
+    ) {
+      try {
+        return pipeApi.createPipeTurningGame();
       } catch (err) {
         return makePlaceholder(game);
       }
