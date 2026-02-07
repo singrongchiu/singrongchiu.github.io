@@ -222,9 +222,7 @@
             countDryPlants(states) === 0
           ) {
             done = true;
-            window.setTimeout(function () {
-              onSuccess();
-            }, 3000);
+            onSuccess();
           }
         }
 

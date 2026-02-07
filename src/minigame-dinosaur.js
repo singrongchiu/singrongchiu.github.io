@@ -27,7 +27,6 @@
       id: "dinosaur",
       label: "Dino Petting",
       weight: 1,
-      allowSkip: false,
       playable: true,
       render: function (mount, ctx) {
         var callbacks = ctx || {};
@@ -40,13 +39,19 @@
         var moveTimer = null;
         var activeShift = 0;
         var suppressClickUntil = 0;
+        var pointerTap = {
+          active: false,
+          id: -1,
+          x: 0,
+          y: 0
+        };
 
         mount.innerHTML =
           "<div class='dino-game'>" +
           "<div class='dino-scene'>" +
           "<span class='dino-flower f1'></span>" +
           "<span class='dino-flower f2'></span>" +
-          "<button type='button' class='dinosaur' aria-label='Pet dinosaur'>" +
+          "<button type='button' class='dinosaur' aria-label='Pet dinosaur' data-allow-swipe-skip='1'>" +
           "<span class='dino-tail'></span>" +
           "<span class='dino-body'></span>" +
           "<span class='dino-head'>" +
@@ -64,7 +69,7 @@
         var dino = mount.querySelector(".dinosaur");
         var scene = mount.querySelector(".dino-scene");
         var countNode = mount.querySelector(".dino-count");
-        dino.style.touchAction = "none";
+        dino.style.touchAction = "manipulation";
 
         function setShift(px) {
           activeShift = px;
@@ -149,11 +154,39 @@
           if (evt.pointerType === "mouse" && evt.button !== 0) {
             return;
           }
-          if (evt.cancelable) {
-            evt.preventDefault();
+          pointerTap.active = true;
+          pointerTap.id = evt.pointerId;
+          pointerTap.x = evt.clientX;
+          pointerTap.y = evt.clientY;
+        }
+
+        function onPointerMove(evt) {
+          if (!pointerTap.active || pointerTap.id !== evt.pointerId) {
+            return;
           }
-          suppressClickUntil = Date.now() + 450;
-          onPet();
+          if (Math.abs(evt.clientX - pointerTap.x) > 12 || Math.abs(evt.clientY - pointerTap.y) > 12) {
+            pointerTap.active = false;
+          }
+        }
+
+        function clearPointerTap(evt) {
+          if (!evt || pointerTap.id !== evt.pointerId) {
+            return;
+          }
+          pointerTap.active = false;
+          pointerTap.id = -1;
+        }
+
+        function onPointerUp(evt) {
+          if (!evt || pointerTap.id !== evt.pointerId) {
+            return;
+          }
+          var wasTap = pointerTap.active;
+          clearPointerTap(evt);
+          if (wasTap) {
+            suppressClickUntil = Date.now() + 450;
+            onPet();
+          }
         }
 
         function onClick(evt) {
@@ -173,6 +206,9 @@
         }
 
         dino.addEventListener("pointerdown", onPointerDown);
+        dino.addEventListener("pointermove", onPointerMove);
+        dino.addEventListener("pointerup", onPointerUp);
+        dino.addEventListener("pointercancel", clearPointerTap);
         dino.addEventListener("click", onClick);
         dino.addEventListener("dblclick", onDoubleClick);
         dino.addEventListener("animationend", onTapAnimationEnd);
@@ -185,6 +221,9 @@
         return function cleanup() {
           window.clearTimeout(moveTimer);
           dino.removeEventListener("pointerdown", onPointerDown);
+          dino.removeEventListener("pointermove", onPointerMove);
+          dino.removeEventListener("pointerup", onPointerUp);
+          dino.removeEventListener("pointercancel", clearPointerTap);
           dino.removeEventListener("click", onClick);
           dino.removeEventListener("dblclick", onDoubleClick);
           dino.removeEventListener("animationend", onTapAnimationEnd);

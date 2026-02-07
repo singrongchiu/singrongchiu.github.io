@@ -738,7 +738,7 @@
       width: 100%;
       height: 100%;
       display: grid;
-      grid-template-rows: 1fr auto;
+      grid-template-rows: 1fr auto auto;
       gap: 8px;
       align-content: start;
     }
@@ -846,6 +846,42 @@
         inset 0 -4px 0 rgba(75, 35, 11, 0.2),
         0 0 0 3px rgba(58, 139, 79, 0.24);
     }
+    .cooking-recipe-bottom {
+      border: 2px dashed #8f6c45;
+      border-radius: 12px;
+      background: #fff3de;
+      display: grid;
+      grid-template-columns: auto auto auto auto auto;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      min-height: 44px;
+      padding: 6px 8px;
+    }
+    .recipe-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #8f6c45;
+      background: #fffdf8;
+      display: grid;
+      place-items: center;
+      font-size: 17px;
+      opacity: 0.9;
+      transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+    }
+    .recipe-dot.is-added {
+      border-color: #3d8751;
+      box-shadow: 0 0 0 2px rgba(61, 135, 81, 0.2);
+      transform: scale(1.08);
+    }
+    .recipe-plus,
+    .recipe-arrow {
+      font-size: 16px;
+      font-weight: 900;
+      color: #6f4b2a;
+      line-height: 1;
+    }
     .cooking-bowl-slots {
       display: grid;
       grid-template-columns: repeat(2, auto);
@@ -866,6 +902,10 @@
       opacity: 1;
       border-color: #3d8751;
       box-shadow: 0 0 0 2px rgba(61, 135, 81, 0.2);
+    }
+    .cooking-game.is-complete .cooking-recipe-bottom,
+    .cooking-game.is-complete .cooking-bowl-slots {
+      display: none;
     }
     .cooking-item.is-shaking {
       animation: cookingShake .22s linear;
@@ -1073,6 +1113,154 @@
     .dino-chip {
       margin-top: 0;
     }
+    .harvest-game {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .harvest-hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .harvest-chip {
+      margin: 0;
+      justify-self: stretch;
+      text-align: center;
+    }
+    .harvest-scene {
+      position: relative;
+      border: 3px solid #678155;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0) 36%),
+        linear-gradient(to top, #a6764b 0 20%, #d1ba8f 20% 30%, #b7d79b 30% 100%);
+      overflow: hidden;
+      touch-action: none;
+      outline: none;
+    }
+    .harvest-ground {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 48px;
+      background:
+        repeating-linear-gradient(
+          to right,
+          rgba(255, 255, 255, 0.08) 0 14px,
+          rgba(255, 255, 255, 0) 14px 28px
+        ),
+        linear-gradient(#8e6d48, #765537);
+      border-top: 3px solid #644225;
+    }
+    .harvest-falls,
+    .harvest-feedback {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .harvest-item {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      margin-left: -15px;
+      margin-top: -15px;
+      font-size: 0;
+      line-height: 0;
+      filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.24));
+      user-select: none;
+    }
+    .harvest-item::before {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      line-height: 1;
+      content: "";
+    }
+    .harvest-item.is-apple::before {
+      content: "🍎";
+      transform: rotate(-8deg);
+    }
+    .harvest-item.is-orange::before {
+      content: "🍊";
+      transform: rotate(5deg);
+    }
+    .harvest-item.is-pear::before {
+      content: "🍐";
+      transform: rotate(-4deg);
+    }
+    .harvest-basket {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      width: 86px;
+      height: 46px;
+      margin-left: -43px;
+      border: 3px solid #6a4525;
+      border-radius: 14px 14px 18px 18px;
+      background:
+        repeating-linear-gradient(
+          to right,
+          rgba(255, 255, 255, 0.14) 0 7px,
+          rgba(255, 255, 255, 0.02) 7px 13px
+        ),
+        linear-gradient(#d39a61, #ab7040);
+      box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.16);
+      pointer-events: none;
+      transition: transform .1s ease;
+    }
+    .harvest-basket::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -18px;
+      width: 52px;
+      height: 24px;
+      margin-left: -26px;
+      border: 3px solid #744b27;
+      border-bottom: 0;
+      border-radius: 999px 999px 0 0;
+      background: none;
+      opacity: 0.8;
+    }
+    .harvest-basket.is-hit {
+      animation: harvestBasketHit .14s ease-out;
+    }
+    .harvest-float {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-size: 15px;
+      line-height: 1;
+      font-weight: 900;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.38);
+      animation: harvestFloat .62s ease-out forwards;
+      pointer-events: none;
+    }
+    .harvest-float.is-positive {
+      color: #f5ff8f;
+    }
+    .harvest-float.is-neutral {
+      color: #f8e5d2;
+    }
+    .harvest-help {
+      justify-self: center;
+    }
+    @keyframes harvestBasketHit {
+      0% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-4px) scale(1.04); }
+      100% { transform: translateY(0) scale(1); }
+    }
+    @keyframes harvestFloat {
+      from { opacity: 1; transform: translate(-50%, -50%) scale(0.82); }
+      to { opacity: 0; transform: translate(-50%, -132%) scale(1.08); }
+    }
     .is-hidden {
       display: none;
     }
@@ -1163,6 +1351,7 @@
   <script src="./minigame-plant.js"></script>
   <script src="./minigame-cooking.js"></script>
   <script src="./minigame-dinosaur.js"></script>
+  <script src="./minigame-harvest.js"></script>
   <script src="./minigames.js"></script>
   <script src="./app.js"></script>
 </body>

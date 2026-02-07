@@ -1,26 +1,9 @@
 (function () {
   "use strict";
 
-  var SAMPLE_RECIPE = {
-    id: "mix_bowl",
-    name: "",
-    finalDishId: "mix_done",
-    steps: [
-      {
-        id: "add_egg",
-        inputs: ["eggs", "bowl"],
-        output: { id: "bowl_egg", name: "", type: "ingredient", state: "partial", zone: "work" },
-        visualProgress: "",
-        consumesInputs: ["eggs"]
-      },
-      {
-        id: "add_milk",
-        inputs: ["milk", "bowl_egg"],
-        output: { id: "mix_done", name: "", type: "ingredient", state: "finished", zone: "work" },
-        visualProgress: "",
-        consumesInputs: ["milk"]
-      }
-    ]
+  var RECIPE = {
+    required: ["eggs", "milk"],
+    bowl: "bowl"
   };
 
   var STARTING_ITEMS = [
@@ -28,18 +11,17 @@
     { id: "milk", name: "Milk", type: "ingredient", state: "cold", zone: "counter" },
     { id: "bowl", name: "Bowl", type: "tool", zone: "counter" }
   ];
+
   var ITEM_VISUALS = {
     eggs: { icon: "🥚", name: "Eggs" },
     milk: { icon: "🥛", name: "Milk" },
-    bowl: { icon: "🥣", name: "Bowl" },
-    bowl_egg: { icon: "🍳", name: "Egg Bowl" },
-    mix_done: { icon: "🍯", name: "Mix" }
+    bowl: { icon: "🥣", name: "Bowl" }
   };
 
   function cloneItem(item) {
     return {
       id: String(item.id),
-      name: String(item.name),
+      name: String(item.name || item.id),
       type: String(item.type || "ingredient"),
       state: item.state ? String(item.state) : "",
       zone: item.zone === "work" ? "work" : "counter"
@@ -53,113 +35,16 @@
     });
   }
 
-  function getVisualForItemId(itemId, fallbackName) {
-    var id = String(itemId || "");
-    var found = ITEM_VISUALS[id] || null;
+  function getItemVisual(itemId, fallbackName) {
+    var found = ITEM_VISUALS[String(itemId)] || null;
     return {
       icon: found ? found.icon : "🍽️",
-      name: found ? found.name : String(fallbackName || id || "Item")
+      name: found ? found.name : String(fallbackName || itemId || "Item")
     };
   }
 
-  function normalizeStepState(recipe) {
-    if (!recipe || !Array.isArray(recipe.steps)) {
-      return [];
-    }
-    return recipe.steps.map(function (step, index) {
-      var requiredCount = Number(step && step.requiredCount);
-      return {
-        id: (step && step.id) ? String(step.id) : ("step_" + String(index + 1)),
-        completedCount: 0,
-        requiredCount: Number.isFinite(requiredCount) && requiredCount > 0 ? Math.floor(requiredCount) : 1,
-        repeatable: Boolean(step && step.repeatable)
-      };
-    });
-  }
-
-  function getStepById(recipe, stepId) {
-    if (!recipe || !Array.isArray(recipe.steps)) {
-      return null;
-    }
-    return recipe.steps.find(function (step, index) {
-      var id = (step && step.id) ? String(step.id) : ("step_" + String(index + 1));
-      return id === stepId;
-    }) || null;
-  }
-
-  function isStepIncomplete(stepState) {
-    if (!stepState) {
-      return false;
-    }
-    return Number(stepState.completedCount) < Number(stepState.requiredCount);
-  }
-
-  function isStepCompleted(stepState) {
-    if (!stepState) {
-      return false;
-    }
-    return !isStepIncomplete(stepState);
-  }
-
-  function areAllStepsCompleted(stepStates) {
-    var list = Array.isArray(stepStates) ? stepStates : [];
-    if (!list.length) {
-      return false;
-    }
-    return list.every(function (stepState) {
-      return isStepCompleted(stepState);
-    });
-  }
-
-  function findMatchingStepState(recipe, stepStates, firstDefId, secondDefId) {
-    var states = Array.isArray(stepStates) ? stepStates : [];
-    var i = 0;
-    for (i = 0; i < states.length; i += 1) {
-      var stepState = states[i];
-      var step = getStepById(recipe, stepState.id);
-      if (!step || !isStepIncomplete(stepState)) {
-        continue;
-      }
-      if (isMatchingStep(step, firstDefId, secondDefId)) {
-        return stepState;
-      }
-    }
-    return null;
-  }
-
-  function getConsumedInstanceIds(step, firstItem, secondItem) {
-    var consumeRule = step && step.consumesInputs;
-    if (consumeRule === false) {
-      return [];
-    }
-    if (Array.isArray(consumeRule)) {
-      return [firstItem, secondItem]
-        .filter(function (item) {
-          return item && consumeRule.indexOf(item.id) >= 0;
-        })
-        .map(function (item) {
-          return item.instanceId;
-        });
-    }
-    return [firstItem.instanceId, secondItem.instanceId];
-  }
-
-  function hasItemDefinition(items, itemDefId) {
-    var list = Array.isArray(items) ? items : [];
-    return list.some(function (item) {
-      return item.id === itemDefId;
-    });
-  }
-
-  function isMatchingStep(step, firstId, secondId) {
-    if (!step || !Array.isArray(step.inputs) || step.inputs.length !== 2) {
-      return false;
-    }
-    var a = String(firstId);
-    var b = String(secondId);
-    var s0 = String(step.inputs[0]);
-    var s1 = String(step.inputs[1]);
-    return (a === s0 && b === s1) || (a === s1 && b === s0);
+  function isRequiredIngredient(itemId) {
+    return RECIPE.required.indexOf(String(itemId)) >= 0;
   }
 
   function createCookingGame() {
@@ -170,15 +55,13 @@
       playable: true,
       render: function (mount, ctx) {
         var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function"
-          ? callbacks.onSuccess
-          : function () {};
+        var onSuccess = typeof callbacks.onSuccess === "function" ? callbacks.onSuccess : function () {};
+        var burstConfetti = typeof callbacks.burstConfetti === "function" ? callbacks.burstConfetti : function () {};
+
         var items = createInitialItems().filter(function (item) {
-          return item.id === "eggs" || item.id === "milk";
+          return item.id !== RECIPE.bowl;
         });
-        var bowlHasEgg = false;
-        var bowlHasMilk = false;
-        var bowlContents = [];
+        var added = { eggs: false, milk: false };
         var selectedId = "";
         var done = false;
         var drag = {
@@ -191,6 +74,7 @@
           ghostFrame: 0,
           bowlHot: false
         };
+
         var parentCard = mount.parentNode;
         var hintNode = parentCard ? parentCard.querySelector(".hint") : null;
         var headNode = parentCard ? parentCard.querySelector(".card-head") : null;
@@ -214,34 +98,44 @@
           "<span class='cooking-bowl-fill'></span>" +
           "</button>" +
           "<div class='cooking-bowl-slots'>" +
-          "<span class='cooking-slot' data-slot='eggs'>🥚</span>" +
-          "<span class='cooking-slot' data-slot='milk'>🥛</span>" +
+          "<span class='cooking-slot' data-slot='eggs'></span>" +
+          "<span class='cooking-slot' data-slot='milk'></span>" +
           "</div>" +
           "</div>" +
           "</div>" +
-          "<button type='button' class='btn cooking-continue is-hidden' aria-label='Continue'>▶</button>" +
+          "<div class='cooking-recipe-bottom'>" +
+          "<span class='recipe-dot recipe-egg'>🥚</span>" +
+          "<span class='recipe-plus'>+</span>" +
+          "<span class='recipe-dot recipe-milk'>🥛</span>" +
+          "<span class='recipe-arrow'>→</span>" +
+          "<span class='recipe-dot recipe-bowl'>🥣</span>" +
+          "</div>" +
           "</div>";
+
         var counterNode = mount.querySelector(".cooking-counter");
+        var gameNode = mount.querySelector(".cooking-game");
+        var recipeBottomNode = mount.querySelector(".cooking-recipe-bottom");
         var bowlNode = mount.querySelector(".cooking-bowl");
-        var bowlMainNode = mount.querySelector(".cooking-bowl-main");
         var bowlFillNode = mount.querySelector(".cooking-bowl-fill");
+        var bowlSlotsNode = mount.querySelector(".cooking-bowl-slots");
         var eggSlotNode = mount.querySelector(".cooking-slot[data-slot='eggs']");
         var milkSlotNode = mount.querySelector(".cooking-slot[data-slot='milk']");
-        var continueButton = mount.querySelector(".cooking-continue");
+        var recipeEggNode = mount.querySelector(".recipe-egg");
+        var recipeMilkNode = mount.querySelector(".recipe-milk");
 
-        function findItem(itemId) {
+        function findItem(instanceId) {
           var i = 0;
           for (i = 0; i < items.length; i += 1) {
-            if (items[i].instanceId === itemId) {
+            if (items[i].instanceId === instanceId) {
               return items[i];
             }
           }
           return null;
         }
 
-        function removeItem(itemId) {
+        function removeItem(instanceId) {
           items = items.filter(function (item) {
-            return item.instanceId !== itemId;
+            return item.instanceId !== instanceId;
           });
         }
 
@@ -251,7 +145,7 @@
             if (item.instanceId === selectedId) {
               classes += " is-selected";
             }
-            var visual = getVisualForItemId(item.id, item.name);
+            var visual = getItemVisual(item.id, item.name);
             return (
               "<button type='button' class='" + classes + "' data-item='" + item.instanceId + "'>" +
               "<span class='cooking-item-icon'>" + visual.icon + "</span>" +
@@ -261,31 +155,35 @@
         }
 
         function renderBowl() {
-          var level = (bowlHasEgg ? 1 : 0) + (bowlHasMilk ? 1 : 0);
-          bowlNode.classList.toggle("is-stage-1", level === 1);
-          bowlNode.classList.toggle("is-stage-2", level === 2);
-          eggSlotNode.classList.toggle("is-added", bowlHasEgg);
-          milkSlotNode.classList.toggle("is-added", bowlHasMilk);
-          bowlMainNode.textContent = "🥣";
-          if (!bowlContents.length) {
-            bowlFillNode.innerHTML = "";
+          var level = (added.eggs ? 1 : 0) + (added.milk ? 1 : 0);
+          var growBowl = !done;
+          if (gameNode) {
+            gameNode.classList.toggle("is-complete", done);
+          }
+          if (recipeBottomNode) {
+            recipeBottomNode.setAttribute("aria-hidden", done ? "true" : "false");
+          }
+          bowlNode.classList.toggle("is-stage-1", growBowl && level === 1);
+          bowlNode.classList.toggle("is-stage-2", growBowl && level === 2);
+          eggSlotNode.classList.toggle("is-added", added.eggs);
+          milkSlotNode.classList.toggle("is-added", added.milk);
+          recipeEggNode.classList.toggle("is-added", added.eggs);
+          recipeMilkNode.classList.toggle("is-added", added.milk);
+          bowlSlotsNode.classList.toggle("is-hidden", done);
+
+          if (done) {
+            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>🥚</span><span class='cooking-fill-dot'>🥛</span><span class='cooking-fill-dot'>✨</span>";
             return;
           }
-          bowlFillNode.innerHTML = bowlContents.map(function (icon) {
-            return "<span class='cooking-fill-dot'>" + icon + "</span>";
-          }).join("");
-        }
-
-        function shakeItems(firstId, secondId) {
-          var nodes = mount.querySelectorAll(".cooking-item");
-          Array.prototype.forEach.call(nodes, function (node) {
-            var id = node.getAttribute("data-item");
-            if (id === firstId || id === secondId) {
-              node.classList.remove("is-shaking");
-              node.offsetWidth;
-              node.classList.add("is-shaking");
-            }
-          });
+          if (added.eggs) {
+            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>🥚</span>";
+            return;
+          }
+          if (added.milk) {
+            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>🥛</span>";
+            return;
+          }
+          bowlFillNode.innerHTML = "";
         }
 
         function pointInsideRect(point, rect) {
@@ -350,51 +248,52 @@
           drag.ghost = null;
         }
 
-        function startDrag(itemId, icon, pointerId, clientX, clientY) {
+        function startDrag(instanceId, icon, pointerId, clientX, clientY) {
           drag.active = true;
           drag.pointerId = pointerId;
-          drag.itemId = itemId;
-          drag.bowlHot = false;
-          bowlNode.classList.remove("is-drop-target");
-          selectedId = itemId;
+          drag.itemId = instanceId;
+          selectedId = instanceId;
           renderItems();
           var ghost = ensureGhost();
           ghost.textContent = icon;
           moveGhost(clientX, clientY);
         }
 
-        function tryDropIntoBowl(itemId) {
+        function maybeCompleteRecipe() {
+          if (!done && added.eggs && added.milk) {
+            done = true;
+            renderBowl();
+            burstConfetti();
+            window.setTimeout(function () {
+              onSuccess();
+            }, 350);
+          }
+        }
+
+        function tryDropIntoBowl(instanceId) {
           if (done) {
             return;
           }
-          var item = findItem(itemId);
+          var item = findItem(instanceId);
           if (!item) {
             return;
           }
-          if (item.id === "eggs" && !bowlHasEgg) {
-            bowlHasEgg = true;
-            bowlContents.push("🥚", "🥚");
-            removeItem(item.instanceId);
+          if (!isRequiredIngredient(item.id)) {
             selectedId = "";
             renderItems();
-            renderBowl();
-          } else if (item.id === "milk" && !bowlHasMilk) {
-            bowlHasMilk = true;
-            bowlContents.push("🥛", "🥛");
-            removeItem(item.instanceId);
-            selectedId = "";
-            renderItems();
-            renderBowl();
-          } else {
-            shakeItems(item.instanceId, "");
             return;
           }
-          if (bowlHasEgg && bowlHasMilk) {
-            done = true;
-            bowlContents.push("✨");
-            renderBowl();
-            continueButton.classList.remove("is-hidden");
+          if (added[item.id]) {
+            selectedId = "";
+            renderItems();
+            return;
           }
+          added[item.id] = true;
+          removeItem(item.instanceId);
+          selectedId = "";
+          renderItems();
+          renderBowl();
+          maybeCompleteRecipe();
         }
 
         function onPointerDown(evt) {
@@ -411,15 +310,15 @@
           if (!target || target === mount) {
             return;
           }
-          var itemId = target.getAttribute("data-item");
-          if (!itemId) {
+          var instanceId = target.getAttribute("data-item");
+          if (!instanceId) {
             return;
           }
-          var item = findItem(itemId);
+          var item = findItem(instanceId);
           if (!item) {
             return;
           }
-          var visual = getVisualForItemId(item.id, item.name);
+          var visual = getItemVisual(item.id, item.name);
           if (typeof target.setPointerCapture === "function") {
             try {
               target.setPointerCapture(evt.pointerId);
@@ -428,7 +327,7 @@
             }
           }
           evt.preventDefault();
-          startDrag(itemId, visual.icon, evt.pointerId, evt.clientX, evt.clientY);
+          startDrag(instanceId, visual.icon, evt.pointerId, evt.clientX, evt.clientY);
         }
 
         function onPointerMove(evt) {
@@ -451,8 +350,7 @@
           }
           evt.preventDefault();
           var bowlRect = inflateRect(bowlNode.getBoundingClientRect(), 18);
-          var didDropInBowl = pointInsideRect({ x: evt.clientX, y: evt.clientY }, bowlRect);
-          if (didDropInBowl) {
+          if (pointInsideRect({ x: evt.clientX, y: evt.clientY }, bowlRect)) {
             tryDropIntoBowl(drag.itemId);
           } else {
             selectedId = "";
@@ -475,7 +373,7 @@
         window.addEventListener("pointermove", onPointerMove);
         window.addEventListener("pointerup", onPointerUp);
         window.addEventListener("pointercancel", onPointerCancel);
-        continueButton.addEventListener("click", onSuccess);
+
         renderItems();
         renderBowl();
 
@@ -484,7 +382,6 @@
           window.removeEventListener("pointermove", onPointerMove);
           window.removeEventListener("pointerup", onPointerUp);
           window.removeEventListener("pointercancel", onPointerCancel);
-          continueButton.removeEventListener("click", onSuccess);
           clearDragState();
           if (hintNode) {
             hintNode.textContent = previousHintText;
@@ -498,16 +395,10 @@
   }
 
   var api = {
-    SAMPLE_RECIPE: SAMPLE_RECIPE,
+    RECIPE: RECIPE,
     STARTING_ITEMS: STARTING_ITEMS,
     createInitialItems: createInitialItems,
-    normalizeStepState: normalizeStepState,
-    getStepById: getStepById,
-    isStepIncomplete: isStepIncomplete,
-    areAllStepsCompleted: areAllStepsCompleted,
-    findMatchingStepState: findMatchingStepState,
-    getConsumedInstanceIds: getConsumedInstanceIds,
-    isMatchingStep: isMatchingStep,
+    isRequiredIngredient: isRequiredIngredient,
     createCookingGame: createCookingGame
   };
 
