@@ -778,6 +778,7 @@
       margin-top: 0;
     }
     .letterfill-game {
+      --letterfill-cell-size: clamp(28px, 8.2vw, 35px);
       width: 100%;
       height: 100%;
       display: grid;
@@ -787,23 +788,31 @@
       gap: 12px;
     }
     .letterfill-board {
-      width: min(334px, 96%);
+      width: min(100%, calc((var(--letterfill-cell-size) * 5) + 24px));
       display: block;
     }
     .letterfill-row {
       display: grid;
-      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 6px;
       align-items: stretch;
       width: 100%;
+      justify-content: center;
+    }
+    .letterfill-row.is-app {
+      grid-template-columns: repeat(3, var(--letterfill-cell-size));
+    }
+    .letterfill-row.is-lovin {
+      grid-template-columns: repeat(5, var(--letterfill-cell-size));
+      margin-top: 6px;
     }
     .letterfill-slot {
-      min-height: 38px;
+      width: var(--letterfill-cell-size);
+      min-height: var(--letterfill-cell-size);
       border-radius: 9px;
       border: 2px solid #718365;
       background: #f9fff2;
       box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.09);
-      font-size: 33px;
+      font-size: calc(var(--letterfill-cell-size) - 2px);
       font-weight: 900;
       line-height: 1;
       letter-spacing: .02em;
@@ -829,32 +838,29 @@
       border-color: #588153;
       color: #26482b;
     }
-    .letterfill-slot.is-word-start {
-      margin-left: 10px;
-    }
     .letterfill-tiles {
-      width: min(148px, 60%);
+      width: calc((var(--letterfill-cell-size) * 2) + 6px);
       display: grid;
-      grid-auto-flow: column;
-      grid-auto-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(2, var(--letterfill-cell-size));
       gap: 6px;
-      justify-items: center;
+      justify-content: center;
       margin-top: 12px;
     }
     .letterfill-tile {
-      width: 100%;
-      min-height: 34px;
-      border-radius: 8px;
+      width: var(--letterfill-cell-size);
+      height: var(--letterfill-cell-size);
+      border-radius: 9px;
       border: 2px solid #637e56;
       background: linear-gradient(#edf8de, #d7edc4);
       box-shadow:
         inset 0 -3px 0 rgba(0, 0, 0, 0.11),
         0 2px 0 rgba(0, 0, 0, 0.1);
-      font-size: 31px;
+      font-size: calc(var(--letterfill-cell-size) - 2px);
       font-weight: 900;
       line-height: 1;
       letter-spacing: .03em;
       color: #2b4a2c;
+      padding: 0;
       transition:
         border-color calc(.14s * var(--tempo-scale)) ease,
         background calc(.14s * var(--tempo-scale)) ease,
@@ -864,6 +870,14 @@
     }
     .letterfill-slot:active,
     .letterfill-tile:active {
+      transform: none;
+    }
+    .letterfill-slot:focus,
+    .letterfill-slot:focus-visible,
+    .letterfill-tile:focus,
+    .letterfill-tile:focus-visible {
+      outline: none;
+      box-shadow: none;
       transform: none;
     }
     .letterfill-tile.is-dragging {
@@ -884,11 +898,11 @@
       position: fixed;
       left: 0;
       top: 0;
-      width: 36px;
-      height: 36px;
-      margin-left: -18px;
-      margin-top: -18px;
-      border-radius: 8px;
+      width: var(--letterfill-cell-size);
+      height: var(--letterfill-cell-size);
+      margin-left: calc(var(--letterfill-cell-size) * -0.5);
+      margin-top: calc(var(--letterfill-cell-size) * -0.5);
+      border-radius: 9px;
       border: 2px solid #3d7e52;
       background: linear-gradient(#d8f5c7, #bde7a9);
       box-shadow:
@@ -896,7 +910,7 @@
         0 5px 10px rgba(0, 0, 0, 0.2);
       display: grid;
       place-items: center;
-      font-size: 30px;
+      font-size: calc(var(--letterfill-cell-size) - 2px);
       font-weight: 900;
       letter-spacing: .03em;
       color: #254429;

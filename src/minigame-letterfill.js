@@ -4,6 +4,13 @@
   var WORD = "APPLOVIN";
   var MISSING_COUNT = 2;
   var WORD_BREAK_INDEX = 3;
+  var TILE_EVENTS = [
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "pointercancel",
+    "lostpointercapture"
+  ];
 
   function randomFn(rng) {
     return typeof rng === "function" ? rng : Math.random;
@@ -15,6 +22,10 @@
       return WORD;
     }
     return text;
+  }
+
+  function isValidIndex(index, length) {
+    return Number.isInteger(index) && index >= 0 && index < length;
   }
 
   function pickUniqueIndices(length, count, rng) {
@@ -85,6 +96,14 @@
     var used = Array.isArray(tileUsed) ? tileUsed.slice() : [];
     var safeSlotIndex = Number(slotIndex);
     var safeTileIndex = Number(tileIndex);
+    function result(didPlace) {
+      return {
+        didPlace: didPlace,
+        slotLetters: slots,
+        tileUsed: used,
+        completed: isRoundComplete(slots)
+      };
+    }
 
     while (slots.length < answers.length) {
       slots.push(null);
@@ -93,80 +112,56 @@
       used.push(false);
     }
 
-    if (!Number.isInteger(safeSlotIndex) || safeSlotIndex < 0 || safeSlotIndex >= answers.length) {
-      return {
-        didPlace: false,
-        slotLetters: slots,
-        tileUsed: used,
-        completed: isRoundComplete(slots)
-      };
+    if (!isValidIndex(safeSlotIndex, answers.length)) {
+      return result(false);
     }
-    if (!Number.isInteger(safeTileIndex) || safeTileIndex < 0 || safeTileIndex >= tilePool.length) {
-      return {
-        didPlace: false,
-        slotLetters: slots,
-        tileUsed: used,
-        completed: isRoundComplete(slots)
-      };
+    if (!isValidIndex(safeTileIndex, tilePool.length)) {
+      return result(false);
     }
     if (used[safeTileIndex]) {
-      return {
-        didPlace: false,
-        slotLetters: slots,
-        tileUsed: used,
-        completed: isRoundComplete(slots)
-      };
+      return result(false);
     }
     if (typeof slots[safeSlotIndex] === "string" && slots[safeSlotIndex].length > 0) {
-      return {
-        didPlace: false,
-        slotLetters: slots,
-        tileUsed: used,
-        completed: isRoundComplete(slots)
-      };
+      return result(false);
     }
     if (tilePool[safeTileIndex] !== answers[safeSlotIndex]) {
-      return {
-        didPlace: false,
-        slotLetters: slots,
-        tileUsed: used,
-        completed: isRoundComplete(slots)
-      };
+      return result(false);
     }
 
     slots[safeSlotIndex] = tilePool[safeTileIndex];
     used[safeTileIndex] = true;
-    return {
-      didPlace: true,
-      slotLetters: slots,
-      tileUsed: used,
-      completed: isRoundComplete(slots)
-    };
+    return result(true);
   }
 
   function createSlotMarkup(value, index) {
-    var breakClass = index === WORD_BREAK_INDEX ? " is-word-start" : "";
     if (typeof value === "string" && value.length > 0) {
       return (
-        "<button type='button' class='letterfill-slot is-fixed" + breakClass + "' data-slot='" + index + "' " +
+        "<button type='button' class='letterfill-slot is-fixed' data-slot='" + index + "' " +
         "aria-label='Letter slot " + String(index + 1) + "' disabled>" +
         value +
         "</button>"
       );
     }
     return (
-      "<button type='button' class='letterfill-slot is-missing" + breakClass + "' data-slot='" + index + "' " +
+      "<button type='button' class='letterfill-slot is-missing' data-slot='" + index + "' " +
       "aria-label='Blank letter slot " + String(index + 1) + "'>?</button>"
     );
   }
 
   function createSlotsMarkup(slotLetters) {
-    var html = "";
+    var topRowHtml = "";
+    var bottomRowHtml = "";
     var i = 0;
-    for (i = 0; i < slotLetters.length; i += 1) {
-      html += createSlotMarkup(slotLetters[i], i);
+    for (i = 0; i < WORD_BREAK_INDEX; i += 1) {
+      topRowHtml += createSlotMarkup(slotLetters[i], i);
     }
-    return "<div class='letterfill-row'>" + html + "</div>";
+    for (i = WORD_BREAK_INDEX; i < slotLetters.length; i += 1) {
+      bottomRowHtml += createSlotMarkup(slotLetters[i], i);
+    }
+    return (
+      "<div class='letterfill-row is-app'>" + topRowHtml + "</div>" +
+      "<div class='letterfill-row is-lovin'>" + bottomRowHtml + "</div>"
+    );
   }
 
   function createTilesMarkup(tiles) {
@@ -247,16 +242,12 @@
           }
         }
 
-        function rememberTimer(timerId) {
-          timers.push(timerId);
-        }
-
         function pulseInvalid(node) {
           if (!node) {
             return;
           }
           node.classList.add("is-invalid");
-          rememberTimer(window.setTimeout(function () {
+          timers.push(window.setTimeout(function () {
             node.classList.remove("is-invalid");
           }, 180));
         }
@@ -288,20 +279,10 @@
         }
 
         function tileForIndex(tileIndex) {
-          if (!Number.isInteger(tileIndex) || tileIndex < 0 || tileIndex >= tiles.length) {
+          if (!isValidIndex(tileIndex, tiles.length)) {
             return null;
           }
           return tiles[tileIndex];
-        }
-
-        function pointInsideRect(clientX, clientY, rect, padding) {
-          var pad = Number(padding) || 0;
-          return (
-            clientX >= rect.left - pad &&
-            clientX <= rect.right + pad &&
-            clientY >= rect.top - pad &&
-            clientY <= rect.bottom + pad
-          );
         }
 
         function findSlotAtPoint(clientX, clientY) {
@@ -316,7 +297,12 @@
               continue;
             }
             var rect = slotNode.getBoundingClientRect();
-            if (pointInsideRect(clientX, clientY, rect, 10)) {
+            if (
+              clientX >= rect.left - 10 &&
+              clientX <= rect.right + 10 &&
+              clientY >= rect.top - 10 &&
+              clientY <= rect.bottom + 10
+            ) {
               return slotIndex;
             }
           }
@@ -372,7 +358,7 @@
           evt.preventDefault();
           noteInteraction();
           var tileIndex = Number(evt.currentTarget.getAttribute("data-tile"));
-          if (!Number.isInteger(tileIndex) || tileIndex < 0 || tileIndex >= tiles.length) {
+          if (!isValidIndex(tileIndex, tiles.length)) {
             return;
           }
           if (tileUsed[tileIndex]) {
@@ -436,7 +422,7 @@
           if (next.completed) {
             done = true;
             setChip("APPLOVIN complete!");
-            rememberTimer(window.setTimeout(function () {
+            timers.push(window.setTimeout(function () {
               complete();
             }, 120));
           } else {
@@ -453,12 +439,18 @@
           stopDrag();
         }
 
+        var tileHandlers = {
+          pointerdown: onTilePointerDown,
+          pointermove: onTilePointerMove,
+          pointerup: onTilePointerUp,
+          pointercancel: onTilePointerCancel,
+          lostpointercapture: onTilePointerCancel
+        };
+
         tiles.forEach(function (tileNode) {
-          tileNode.addEventListener("pointerdown", onTilePointerDown);
-          tileNode.addEventListener("pointermove", onTilePointerMove);
-          tileNode.addEventListener("pointerup", onTilePointerUp);
-          tileNode.addEventListener("pointercancel", onTilePointerCancel);
-          tileNode.addEventListener("lostpointercapture", onTilePointerCancel);
+          TILE_EVENTS.forEach(function (eventName) {
+            tileNode.addEventListener(eventName, tileHandlers[eventName]);
+          });
         });
 
         render();
@@ -470,11 +462,9 @@
           });
           timers = [];
           tiles.forEach(function (tileNode) {
-            tileNode.removeEventListener("pointerdown", onTilePointerDown);
-            tileNode.removeEventListener("pointermove", onTilePointerMove);
-            tileNode.removeEventListener("pointerup", onTilePointerUp);
-            tileNode.removeEventListener("pointercancel", onTilePointerCancel);
-            tileNode.removeEventListener("lostpointercapture", onTilePointerCancel);
+            TILE_EVENTS.forEach(function (eventName) {
+              tileNode.removeEventListener(eventName, tileHandlers[eventName]);
+            });
           });
         };
       }

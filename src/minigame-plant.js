@@ -141,7 +141,7 @@
           "</div>" +
           "</div>";
 
-        var slots = Array.prototype.slice.call(mount.querySelectorAll(".plant-slot"));
+        var slots = Array.from(mount.querySelectorAll(".plant-slot"));
         var can = mount.querySelector(".watering-can");
         var spout = mount.querySelector(".can-spout");
         registerControl(can);
@@ -153,7 +153,7 @@
             slot.classList.toggle("is-dry", !watered);
             var marker = slot.querySelector(".plant-state");
             if (marker) {
-              marker.textContent = watered ? "✓" : "✕";
+              marker.textContent = watered ? "?" : "?";
             }
           });
         }
@@ -303,12 +303,7 @@
           renderPlants();
           resetCan();
 
-          if (
-            next.didWater &&
-            !done &&
-            wateredCount >= REQUIRED_WATERINGS &&
-            countDryPlants(states) === 0
-          ) {
+          if (next.didWater && !done && next.completed) {
             done = true;
             complete();
           }
@@ -326,7 +321,6 @@
             try {
               can.setPointerCapture(evt.pointerId);
             } catch (err) {
-              // Ignore pointer-capture errors.
             }
           }
         }

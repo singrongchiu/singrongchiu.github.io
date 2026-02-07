@@ -1,47 +1,28 @@
 (function () {
   "use strict";
-
   var PATTI_COUNT = 3;
 
-  function createInitialPattyStates() {
-    return [false, false, false];
-  }
+  function createInitialPattyStates() { return [false, false, false]; }
 
   function countFlippedPatties(states) {
     var list = Array.isArray(states) ? states : [];
-    return list.filter(function (isFlipped) {
-      return Boolean(isFlipped);
-    }).length;
+    var i = 0;
+    var count = 0;
+    for (i = 0; i < list.length; i += 1) { if (list[i]) { count += 1; } }
+    return count;
   }
 
   function flipPatty(states, index) {
     var list = Array.isArray(states) ? states.slice(0, PATTI_COUNT) : createInitialPattyStates();
     var targetIndex = Number(index);
-    while (list.length < PATTI_COUNT) {
-      list.push(false);
+    var nextStates = null;
+    while (list.length < PATTI_COUNT) { list.push(false); }
+    if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= PATTI_COUNT || list[targetIndex]) {
+      return { didFlip: false, states: list, completed: countFlippedPatties(list) >= PATTI_COUNT };
     }
-    if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= PATTI_COUNT) {
-      return {
-        didFlip: false,
-        states: list,
-        completed: countFlippedPatties(list) >= PATTI_COUNT
-      };
-    }
-    if (list[targetIndex]) {
-      return {
-        didFlip: false,
-        states: list,
-        completed: countFlippedPatties(list) >= PATTI_COUNT
-      };
-    }
-
-    var nextStates = list.slice();
+    nextStates = list.slice();
     nextStates[targetIndex] = true;
-    return {
-      didFlip: true,
-      states: nextStates,
-      completed: countFlippedPatties(nextStates) >= PATTI_COUNT
-    };
+    return { didFlip: true, states: nextStates, completed: countFlippedPatties(nextStates) >= PATTI_COUNT };
   }
 
   function createMiniGamePlugin() {
@@ -51,35 +32,20 @@
       initialWeight: 1,
       mount: function (mount, engine) {
         var api = engine || {};
-        var complete = typeof api.complete === "function"
-          ? api.complete
-          : function () {};
-        var registerControl = typeof api.registerControl === "function"
-          ? api.registerControl
-          : function () {};
+        var complete = typeof api.complete === "function" ? api.complete : function () {};
+        var registerControl = typeof api.registerControl === "function" ? api.registerControl : function () {};
         var patties = createInitialPattyStates();
         var done = false;
 
-        mount.innerHTML =
-          "<div class='burger-game'>" +
+        mount.innerHTML = "<div class='burger-game'>" +
           "<div class='chip mini-instruction burger-chip'>Tap each patty once</div>" +
           "<div class='grill-scene'>" +
           "<div class='grill-surface'></div>" +
           "<div class='burger-smoke-layer'></div>" +
-          "<button type='button' class='patty-slot' data-patty='0' aria-label='Flip patty 1'>" +
-          "<span class='patty-face'></span>" +
-          "<span class='patty-mark'></span>" +
-          "</button>" +
-          "<button type='button' class='patty-slot' data-patty='1' aria-label='Flip patty 2'>" +
-          "<span class='patty-face'></span>" +
-          "<span class='patty-mark'></span>" +
-          "</button>" +
-          "<button type='button' class='patty-slot' data-patty='2' aria-label='Flip patty 3'>" +
-          "<span class='patty-face'></span>" +
-          "<span class='patty-mark'></span>" +
-          "</button>" +
-          "</div>" +
-          "</div>";
+          "<button type='button' class='patty-slot' data-patty='0' aria-label='Flip patty 1'><span class='patty-face'></span><span class='patty-mark'></span></button>" +
+          "<button type='button' class='patty-slot' data-patty='1' aria-label='Flip patty 2'><span class='patty-face'></span><span class='patty-mark'></span></button>" +
+          "<button type='button' class='patty-slot' data-patty='2' aria-label='Flip patty 3'><span class='patty-face'></span><span class='patty-mark'></span></button>" +
+          "</div></div>";
 
         var grill = mount.querySelector(".grill-scene");
         var smokeLayer = mount.querySelector(".burger-smoke-layer");
@@ -94,9 +60,7 @@
         }
 
         function spawnSmoke(slot) {
-          if (!grill || !smokeLayer || !slot) {
-            return;
-          }
+          if (!grill || !smokeLayer || !slot) { return; }
           var grillRect = grill.getBoundingClientRect();
           var slotRect = slot.getBoundingClientRect();
           var i = 0;
@@ -111,35 +75,22 @@
             puff.style.setProperty("--sy", (-24 - (Math.random() * 26)).toFixed(1) + "px");
             puff.style.setProperty("--ss", (0.72 + (Math.random() * 0.5)).toFixed(2));
             smokeLayer.appendChild(puff);
-            (function (node) {
-              node.addEventListener("animationend", function () {
-                node.remove();
-              });
-            }(puff));
+            (function (node) { node.addEventListener("animationend", function () { node.remove(); }); }(puff));
           }
         }
 
-        function onPointerDown(evt) {
-          evt.stopPropagation();
-        }
+        function onPointerDown(evt) { evt.stopPropagation(); }
 
         function onClick(evt) {
           evt.stopPropagation();
-          if (done) {
-            return;
-          }
+          if (done) { return; }
           var targetIndex = Number(evt.currentTarget.getAttribute("data-patty"));
           var next = flipPatty(patties, targetIndex);
-          if (!next.didFlip) {
-            return;
-          }
+          if (!next.didFlip) { return; }
           patties = next.states;
           renderPatties();
           spawnSmoke(evt.currentTarget);
-          if (next.completed) {
-            done = true;
-            complete();
-          }
+          if (next.completed) { done = true; complete(); }
         }
 
         slots.forEach(function (slot) {
@@ -147,9 +98,7 @@
           slot.addEventListener("pointerdown", onPointerDown);
           slot.addEventListener("click", onClick);
         });
-
         renderPatties();
-
         return function cleanup() {
           slots.forEach(function (slot) {
             slot.removeEventListener("pointerdown", onPointerDown);
@@ -167,11 +116,6 @@
     flipPatty: flipPatty,
     createMiniGamePlugin: createMiniGamePlugin
   };
-
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = api;
-  }
-  if (typeof window !== "undefined") {
-    window.BurgerMiniGame = api;
-  }
+  if (typeof module !== "undefined" && module.exports) { module.exports = api; }
+  if (typeof window !== "undefined") { window.BurgerMiniGame = api; }
 }());
