@@ -5,14 +5,14 @@ Scene & Objects:
 - Display a single Avatar starting on a random tile (Start).
 - Display a Goal Marker (e.g., a flag or portal) on a different random tile (End).
 - Each tile has two underlying properties: Safe (part of the path) and Unsafe (empty space/pit).
-- At the start, a randomized continuous path of Safe tiles exists connecting Start to End. All other tiles are Unsafe.
+- At the start, a randomized shortest Manhattan path of Safe tiles exists connecting Start to End. All other tiles are Unsafe.
 
 Player Input:
 - Click or Tap an adjacent tile (Up, Down, Left, Right) to move the Avatar.
 
 Gameplay:
-- Memorization Phase: Upon loading, all Safe tiles light up (glow Green) for exactly 3 seconds.
-- Conceal Phase: After 3 seconds, all tiles revert to their neutral stone appearance (Grey).
+- Memorization Phase: Upon loading, all Safe tiles light up (glow Green) for exactly 1.5 seconds.
+- Conceal Phase: After 1.5 seconds, all tiles revert to their neutral stone appearance (Grey).
 - The player clicks an adjacent tile to attempt a step.
 - If the player clicks a Safe tile:
 - The Avatar moves to that tile.

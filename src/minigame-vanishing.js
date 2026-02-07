@@ -2,15 +2,9 @@
   "use strict";
 
   var GRID_SIZE = 4;
-  var MEMORIZE_MS = 3000;
+  var MEMORIZE_MS = 1500;
   var PIT_FLASH_MS = 260;
   var MIN_START_GOAL_DISTANCE = 3;
-  var DIR_STEPS = [
-    [-1, 0],
-    [0, 1],
-    [1, 0],
-    [0, -1]
-  ];
 
   function tileKey(row, col) {
     return String(row) + ":" + String(col);
@@ -18,15 +12,6 @@
 
   function isAdjacent(a, b) {
     return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
-  }
-
-  function inBounds(row, col) {
-    return (
-      row >= 0 &&
-      row < GRID_SIZE &&
-      col >= 0 &&
-      col < GRID_SIZE
-    );
   }
 
   function randomInt(max, rng) {
@@ -73,66 +58,37 @@
     };
   }
 
-  function shuffleInPlace(list, rng) {
+  function buildShortestPath(startPos, goalPos, rng) {
     var random = typeof rng === "function" ? rng : Math.random;
-    var i = 0;
-    for (i = list.length - 1; i > 0; i -= 1) {
-      var j = Math.floor(random() * (i + 1)) % (i + 1);
-      var temp = list[i];
-      list[i] = list[j];
-      list[j] = temp;
-    }
-    return list;
-  }
+    var path = [{ row: startPos.row, col: startPos.col }];
+    var row = startPos.row;
+    var col = startPos.col;
+    var preferRowStep = randomInt(2, random) === 0;
 
-  function getNeighbors(node) {
-    var neighbors = [];
-    var i = 0;
-    for (i = 0; i < DIR_STEPS.length; i += 1) {
-      var nextRow = node.row + DIR_STEPS[i][0];
-      var nextCol = node.col + DIR_STEPS[i][1];
-      if (!inBounds(nextRow, nextCol)) {
-        continue;
-      }
-      neighbors.push({ row: nextRow, col: nextCol });
-    }
-    return neighbors;
-  }
+    while (row !== goalPos.row || col !== goalPos.col) {
+      var canStepRow = row !== goalPos.row;
+      var canStepCol = col !== goalPos.col;
+      var stepRow = false;
 
-  function buildPath(startPos, goalPos, rng) {
-    var random = typeof rng === "function" ? rng : Math.random;
-    var path = [];
-    var visited = {};
-
-    function dfs(node) {
-      var key = tileKey(node.row, node.col);
-      visited[key] = true;
-      path.push({ row: node.row, col: node.col });
-
-      if (node.row === goalPos.row && node.col === goalPos.col) {
-        return true;
+      if (canStepRow && canStepCol) {
+        stepRow = preferRowStep;
+      } else {
+        stepRow = canStepRow;
       }
 
-      var neighbors = getNeighbors(node);
-      shuffleInPlace(neighbors, random);
-      var i = 0;
-      for (i = 0; i < neighbors.length; i += 1) {
-        var next = neighbors[i];
-        var nextKey = tileKey(next.row, next.col);
-        if (visited[nextKey]) {
-          continue;
-        }
-        if (dfs(next)) {
-          return true;
-        }
+      if (stepRow) {
+        row += row < goalPos.row ? 1 : -1;
+      } else {
+        col += col < goalPos.col ? 1 : -1;
       }
 
-      path.pop();
-      delete visited[key];
-      return false;
+      path.push({ row: row, col: col });
+
+      if (canStepRow && canStepCol) {
+        preferRowStep = !preferRowStep;
+      }
     }
 
-    dfs(startPos);
     return path;
   }
 
@@ -142,7 +98,7 @@
 
     for (attempt = 0; attempt < 24; attempt += 1) {
       var picked = pickStartAndGoal(random);
-      var path = buildPath(picked.startPos, picked.goalPos, random);
+      var path = buildShortestPath(picked.startPos, picked.goalPos, random);
       if (path.length >= MIN_START_GOAL_DISTANCE + 1) {
         return {
           startPos: picked.startPos,
@@ -157,7 +113,7 @@
     return {
       startPos: fallbackStart,
       goalPos: fallbackGoal,
-      path: buildPath(fallbackStart, fallbackGoal, random)
+      path: buildShortestPath(fallbackStart, fallbackGoal, random)
     };
   }
 
@@ -342,13 +298,10 @@
     MIN_START_GOAL_DISTANCE: MIN_START_GOAL_DISTANCE,
     tileKey: tileKey,
     isAdjacent: isAdjacent,
-    inBounds: inBounds,
     randomInt: randomInt,
     pickRandomPosition: pickRandomPosition,
     pickStartAndGoal: pickStartAndGoal,
-    shuffleInPlace: shuffleInPlace,
-    getNeighbors: getNeighbors,
-    buildPath: buildPath,
+    buildShortestPath: buildShortestPath,
     createRandomLayout: createRandomLayout,
     createSafeLookup: createSafeLookup,
     createVanishingPathGame: createVanishingPathGame
