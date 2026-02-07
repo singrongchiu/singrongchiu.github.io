@@ -141,16 +141,18 @@
     return html;
   }
 
-  function createVanishingPathGame() {
+  function createMiniGamePlugin() {
     return {
       id: "vanish",
-      label: "Vanishing Path",
-      weight: 1,
-      playable: true,
-      render: function (mount, ctx) {
-        var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function"
-          ? callbacks.onSuccess
+      title: "Vanishing Path",
+      initialWeight: 1,
+      mount: function (mount, engine) {
+        var api = engine || {};
+        var complete = typeof api.complete === "function"
+          ? api.complete
+          : function () {};
+        var registerControl = typeof api.registerControl === "function"
+          ? api.registerControl
           : function () {};
         var layout = createRandomLayout();
         var startPos = layout.startPos;
@@ -168,17 +170,18 @@
 
         mount.innerHTML =
           "<div class='vanish-game'>" +
+          "<div class='chip mini-instruction vanish-chip'>Memorize the path</div>" +
           "<div class='vanish-scene'>" +
           "<div class='vanish-grid'>" +
           createBoardMarkup() +
           "</div>" +
           "</div>" +
-          "<div class='chip vanish-chip'>Memorize the path</div>" +
           "</div>";
 
         var grid = mount.querySelector(".vanish-grid");
         var hint = mount.querySelector(".vanish-chip");
         var tiles = Array.prototype.slice.call(mount.querySelectorAll(".vanish-tile"));
+        registerControl(grid);
 
         function render() {
           var avatarKey = tileKey(avatar.row, avatar.col);
@@ -266,7 +269,7 @@
           if (avatar.row === goalPos.row && avatar.col === goalPos.col) {
             done = true;
             render();
-            onSuccess();
+            complete();
             return;
           }
           render();
@@ -304,7 +307,7 @@
     buildShortestPath: buildShortestPath,
     createRandomLayout: createRandomLayout,
     createSafeLookup: createSafeLookup,
-    createVanishingPathGame: createVanishingPathGame
+    createMiniGamePlugin: createMiniGamePlugin
   };
 
   if (typeof module !== "undefined" && module.exports) {

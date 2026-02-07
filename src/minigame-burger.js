@@ -44,22 +44,25 @@
     };
   }
 
-  function createBurgerGame() {
+  function createMiniGamePlugin() {
     return {
       id: "burger",
-      label: "Burger Flipping",
-      weight: 1,
-      playable: true,
-      render: function (mount, ctx) {
-        var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function"
-          ? callbacks.onSuccess
+      title: "Burger Flipping",
+      initialWeight: 1,
+      mount: function (mount, engine) {
+        var api = engine || {};
+        var complete = typeof api.complete === "function"
+          ? api.complete
+          : function () {};
+        var registerControl = typeof api.registerControl === "function"
+          ? api.registerControl
           : function () {};
         var patties = createInitialPattyStates();
         var done = false;
 
         mount.innerHTML =
           "<div class='burger-game'>" +
+          "<div class='chip mini-instruction burger-chip'>Tap each patty once</div>" +
           "<div class='grill-scene'>" +
           "<div class='grill-surface'></div>" +
           "<div class='burger-smoke-layer'></div>" +
@@ -76,7 +79,6 @@
           "<span class='patty-mark'></span>" +
           "</button>" +
           "</div>" +
-          "<div class='chip burger-chip'>Tap each patty once</div>" +
           "</div>";
 
         var grill = mount.querySelector(".grill-scene");
@@ -101,7 +103,7 @@
           for (i = 0; i < 4; i += 1) {
             var puff = document.createElement("span");
             var x = (slotRect.left - grillRect.left) + (slotRect.width * (0.3 + (Math.random() * 0.4)));
-            var y = (slotRect.top - grillRect.top) + (slotRect.height * (0.18 + (Math.random() * 0.18)));
+            var y = (slotRect.top - grillRect.top) + (slotRect.height * (0.34 + (Math.random() * 0.22)));
             puff.className = "burger-smoke";
             puff.style.left = x.toFixed(1) + "px";
             puff.style.top = y.toFixed(1) + "px";
@@ -136,11 +138,12 @@
           spawnSmoke(evt.currentTarget);
           if (next.completed) {
             done = true;
-            onSuccess();
+            complete();
           }
         }
 
         slots.forEach(function (slot) {
+          registerControl(slot);
           slot.addEventListener("pointerdown", onPointerDown);
           slot.addEventListener("click", onClick);
         });
@@ -162,7 +165,7 @@
     createInitialPattyStates: createInitialPattyStates,
     countFlippedPatties: countFlippedPatties,
     flipPatty: flipPatty,
-    createBurgerGame: createBurgerGame
+    createMiniGamePlugin: createMiniGamePlugin
   };
 
   if (typeof module !== "undefined" && module.exports) {

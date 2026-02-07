@@ -2,6 +2,7 @@
   "use strict";
 
   var MAX_BULB_STEP = 3;
+  var BULB_DROP_PER_STEP = 8;
   var DEFAULT_SWIPE = {
     minDx: 44,
     maxDy: 38,
@@ -91,21 +92,23 @@
   }
 
   function getBulbTransform(step, maxStep) {
-    void step;
-    void maxStep;
-    return "none";
+    var limit = Number.isFinite(maxStep) ? maxStep : MAX_BULB_STEP;
+    var drop = clamp(step, 0, limit) * BULB_DROP_PER_STEP;
+    return "translateY(" + String(drop) + "px)";
   }
 
-  function createLightbulbGame() {
+  function createMiniGamePlugin() {
     return {
       id: "bulb",
-      label: "Lamp Twist",
-      weight: 1,
-      playable: true,
-      render: function (mount, ctx) {
-        var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function"
-          ? callbacks.onSuccess
+      title: "Lamp Twist",
+      initialWeight: 1,
+      mount: function (mount, engine) {
+        var api = engine || {};
+        var complete = typeof api.complete === "function"
+          ? api.complete
+          : function () {};
+        var registerControl = typeof api.registerControl === "function"
+          ? api.registerControl
           : function () {};
         var step = 0;
         var done = false;
@@ -113,6 +116,7 @@
 
         mount.innerHTML =
           "<div class='bulb-game'>" +
+          "<div class='chip mini-instruction bulb-chip'>Swipe bulb right</div>" +
           "<div class='lamp-scene'>" +
           "<div class='lamp-glow'></div>" +
           "<div class='lamp-stem'></div>" +
@@ -123,12 +127,12 @@
           "</button>" +
           "</div>" +
           "<div class='bulb-swipe-hint' aria-hidden='true'>--></div>" +
-          "<div class='chip bulb-chip'>Swipe bulb right</div>" +
           "</div>";
 
         var scene = mount.querySelector(".lamp-scene");
         var bulb = mount.querySelector(".bulb-hit");
         var hint = mount.querySelector(".bulb-chip");
+        registerControl(bulb);
 
         function renderState() {
           if (!scene || !bulb || !hint) {
@@ -137,14 +141,24 @@
           var glow = getGlowLevel(step, MAX_BULB_STEP);
           var boostedGlow = getBoostedGlow(glow);
           var glowScale = 0.88 + (boostedGlow * 0.62);
+          var transform = getBulbTransform(step, MAX_BULB_STEP);
           scene.style.setProperty("--lamp-glow", boostedGlow.toFixed(3));
           scene.style.setProperty("--lamp-glow-size", glowScale.toFixed(3));
-          bulb.style.transform = getBulbTransform(step, MAX_BULB_STEP);
+          bulb.style.setProperty("--bulb-transform", transform);
+          bulb.style.setProperty("--bulb-thread-shift", String(step * 6) + "px");
+          bulb.style.transform = transform;
           if (step >= MAX_BULB_STEP) {
             hint.textContent = "Bulb locked in";
           } else {
             hint.textContent = "Swipe bulb right";
           }
+        }
+
+        function playTurnFeedback() {
+          bulb.classList.remove("is-turning");
+          // Force a reflow so repeated valid swipes replay the turn animation.
+          void bulb.offsetWidth;
+          bulb.classList.add("is-turning");
         }
 
         function resetSwipe() {
@@ -183,9 +197,10 @@
           }
           step = nextStep;
           renderState();
+          playTurnFeedback();
           if (!done && step >= MAX_BULB_STEP) {
             done = true;
-            onSuccess();
+            complete();
           }
         }
 
@@ -195,10 +210,15 @@
           }
         }
 
+        function onTurnAnimationEnd() {
+          bulb.classList.remove("is-turning");
+        }
+
         bulb.addEventListener("pointerdown", onPointerDown);
         bulb.addEventListener("pointerup", onPointerUp);
         bulb.addEventListener("pointercancel", onPointerCancel);
         bulb.addEventListener("lostpointercapture", onPointerCancel);
+        bulb.addEventListener("animationend", onTurnAnimationEnd);
         renderState();
 
         return function cleanup() {
@@ -206,6 +226,7 @@
           bulb.removeEventListener("pointerup", onPointerUp);
           bulb.removeEventListener("pointercancel", onPointerCancel);
           bulb.removeEventListener("lostpointercapture", onPointerCancel);
+          bulb.removeEventListener("animationend", onTurnAnimationEnd);
         };
       }
     };
@@ -219,7 +240,7 @@
     getBoostedGlow: getBoostedGlow,
     getRotationForStep: getRotationForStep,
     getBulbTransform: getBulbTransform,
-    createLightbulbGame: createLightbulbGame
+    createMiniGamePlugin: createMiniGamePlugin
   };
 
   if (typeof module !== "undefined" && module.exports) {

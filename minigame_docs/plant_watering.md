@@ -1,5 +1,10 @@
 Plant Watering:
 
+Rarity:
+- Tier: Uncommon
+- Color: `#3f7fd6`
+- Bounty: `2`
+
 Scene & Objects:
 - Display a garden bed containing exactly 3 potted plants.
 - Display a single watering can that the player can move.

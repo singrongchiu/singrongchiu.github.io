@@ -2,18 +2,18 @@
   "use strict";
 
   var core = window.FrameworkCore || {};
-  var registry = Array.isArray(window.MiniGames) ? window.MiniGames.slice() : [];
+  var rawRegistry = Array.isArray(window.MiniGames) ? window.MiniGames.slice() : [];
   var chooseNext = core.chooseNext;
+  var classifyCardSwipe = core.classifyCardSwipe;
   var updateWeight = core.updateWeight;
   var createSessionClock = core.createSessionClock;
   var clamp = core.clamp;
+  var normalizeGamePlugin = core.normalizeGamePlugin;
+  var createFallbackPlugin = core.createFallbackPlugin;
 
   var ROUND_MS = 7000;
   var ENGAGED_ROUND_MS = 25000;
-  var PLANT_ROUND_MS = 15000;
-  var COOKING_ROUND_MS = 20000;
-  var HARVEST_ROUND_MS = 18000;
-  var SESSION_SECONDS = 90;
+  var SESSION_SECONDS = 105;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
   var BG_START_1 = [215, 239, 193];
   var BG_END_1 = [255, 132, 138];
@@ -29,20 +29,12 @@
     confetti: document.getElementById("confetti")
   };
 
-  var fallback = {
-    id: "empty",
-    label: "Framework Shell",
-    weight: 1,
-    playable: false,
-    render: function (mount) {
-      mount.innerHTML =
-        "<div>" +
-        "<div class='placeholder-icon'>🎮</div>" +
-        "<div class='hint'>No mini-games are wired yet.<br>Swipe up to cycle cards.</div>" +
-        "<div class='chip'>Framework-only mode</div>" +
-        "</div>";
-    }
-  };
+  var fallback = makeFallbackPlugin({
+    id: "framework-shell",
+    title: "Framework Shell",
+    icon: "🎮",
+    hint: "No mini-games are wired yet. Swipe up to cycle cards."
+  });
 
   var state = {
     running: false,
@@ -50,36 +42,102 @@
     clock: null,
     tickTimer: null,
     roundTimer: null,
-    roundMaxMs: ROUND_MS,
+    roundMs: ROUND_MS,
+    engagedRoundMs: ENGAGED_ROUND_MS,
+    roundExtended: false,
+    roundSeq: 0,
     lastId: null,
+    lastSkippedId: null,
     current: null,
     cleanup: null,
-    weights: {}
+    weights: {},
+    controls: [],
+    plugins: normalizeRegistry(rawRegistry)
   };
 
   var swipe = { active: false, x: 0, y: 0, t: 0, id: -1 };
 
-  function getRoundDurationMs(gameId) {
-    if (gameId === "plant") {
-      return PLANT_ROUND_MS;
+  function makeFallbackPlugin(meta, reason) {
+    if (typeof createFallbackPlugin === "function") {
+      return createFallbackPlugin(meta, reason);
     }
-    if (gameId === "cooking") {
-      return COOKING_ROUND_MS;
+    return {
+      id: String((meta && meta.id) || "fallback"),
+      title: String((meta && meta.title) || "Mini-game unavailable"),
+      initialWeight: 1,
+      timing: {
+        roundMs: ROUND_MS,
+        engagedRoundMs: ENGAGED_ROUND_MS
+      },
+      mount: function (mount) {
+        var icon = meta && meta.icon ? String(meta.icon) : "🎮";
+        var hint = meta && meta.hint
+          ? String(meta.hint)
+          : "This mini-game is unavailable right now.";
+        var chip = reason ? "Unavailable: " + String(reason) : "Unavailable";
+        mount.innerHTML =
+          "<div>" +
+          "<div class='placeholder-icon'>" + icon + "</div>" +
+          "<div class='hint'>" + hint + "</div>" +
+          "<div class='chip'>" + chip + "</div>" +
+          "</div>";
+      }
+    };
+  }
+
+  function clampRoundMs(value, fallback) {
+    var n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) {
+      n = Number(fallback);
     }
-    if (gameId === "harvest") {
-      return HARVEST_ROUND_MS;
+    if (!Number.isFinite(n) || n <= 0) {
+      return 0;
     }
-    return ROUND_MS;
+    return Math.round(n);
+  }
+
+  function normalizeRegistry(list) {
+    if (!Array.isArray(list) || !list.length) {
+      return [];
+    }
+    return list.map(function (plugin, index) {
+      var fallbackId = "plugin-" + String(index + 1);
+      var fallbackTitle = "Mini-game " + String(index + 1);
+      try {
+        if (typeof normalizeGamePlugin === "function") {
+          return normalizeGamePlugin(plugin, {
+            id: fallbackId,
+            title: fallbackTitle,
+            initialWeight: 1,
+            timing: {
+              roundMs: ROUND_MS,
+              engagedRoundMs: ENGAGED_ROUND_MS
+            }
+          });
+        }
+        return plugin;
+      } catch (err) {
+        return makeFallbackPlugin(
+          {
+            id: fallbackId,
+            title: fallbackTitle,
+            icon: "⚠️",
+            hint: "A mini-game failed to load and was replaced."
+          },
+          err && err.message
+        );
+      }
+    });
   }
 
   function safeGames() {
-    return registry.length ? registry : [fallback];
+    return state.plugins.length ? state.plugins : [fallback];
   }
 
   function resetWeights() {
     state.weights = {};
-    safeGames().forEach(function (game) {
-      state.weights[game.id] = clamp(game.weight || 1, WEIGHT_CFG.min, WEIGHT_CFG.max);
+    safeGames().forEach(function (plugin) {
+      state.weights[plugin.id] = clamp(plugin.initialWeight || 1, WEIGHT_CFG.min, WEIGHT_CFG.max);
     });
   }
 
@@ -122,22 +180,77 @@
     root.style.setProperty("--bg-warn-alpha-soft", (warm * 0.62).toFixed(3));
   }
 
+  function clearRegisteredControls() {
+    state.controls = [];
+  }
+
+  function registerRoundControl(element, options) {
+    if (!element || typeof element.contains !== "function") {
+      return;
+    }
+    state.controls.push({
+      element: element,
+      allowSwipeSkip: Boolean(options && options.allowSwipeSkip)
+    });
+  }
+
+  function getControlForTarget(target) {
+    var i = 0;
+    for (i = state.controls.length - 1; i >= 0; i -= 1) {
+      var control = state.controls[i];
+      if (control.element && target && control.element.contains(target)) {
+        return control;
+      }
+    }
+    return null;
+  }
+
   function clearCard() {
     if (typeof state.cleanup === "function") {
-      state.cleanup();
+      try {
+        state.cleanup();
+      } catch (err) {
+        // Ignore cleanup failures to keep the session running.
+      }
     }
     state.cleanup = null;
+    clearRegisteredControls();
     el.card.innerHTML = "";
   }
 
-  function showCorrect() {
+  function showToast(text) {
     var toast = document.createElement("div");
     toast.className = "toast";
-    toast.textContent = "Correct!";
+    toast.textContent = String(text || "");
     el.feedback.appendChild(toast);
     window.setTimeout(function () {
       toast.remove();
     }, 760);
+  }
+
+  function getPluginRarity(plugin) {
+    var rarity = plugin && plugin.rarity && typeof plugin.rarity === "object"
+      ? plugin.rarity
+      : {};
+    var label = String(rarity.label || "Uncommon").trim() || "Uncommon";
+    var color = String(rarity.color || "#3f7fd6").trim() || "#3f7fd6";
+    var bounty = Number(rarity.bounty);
+    if (!Number.isFinite(bounty) || bounty <= 0) {
+      bounty = 2;
+    }
+    return {
+      label: label,
+      color: color,
+      bounty: Math.max(2, Math.round(bounty))
+    };
+  }
+
+  function showCorrect(rarity) {
+    var badge = rarity && rarity.label ? String(rarity.label) : "Uncommon";
+    var bounty = rarity && Number.isFinite(rarity.bounty)
+      ? Math.max(2, Math.round(rarity.bounty))
+      : 2;
+    showToast("Correct! +" + String(bounty) + " (" + badge + ")");
   }
 
   function burstConfetti() {
@@ -162,12 +275,114 @@
     }
   }
 
-  function renderCard(game) {
+  function setRoundTimer(ms) {
+    window.clearTimeout(state.roundTimer);
+    state.roundTimer = window.setTimeout(function () {
+      nextCard("round-timeout");
+    }, ms);
+  }
+
+  function extendRoundOnEngagement() {
+    if (!state.running || !state.current || state.roundExtended) {
+      return;
+    }
+    state.roundExtended = true;
+    setRoundTimer(state.engagedRoundMs);
+  }
+
+  function createEngineContextForRound(roundSeq) {
+    var settled = false;
+
+    function isActiveRound() {
+      return Boolean(state.running && state.current && state.roundSeq === roundSeq);
+    }
+
+    function settleRound(effect) {
+      if (settled || !isActiveRound()) {
+        return false;
+      }
+      settled = true;
+      effect();
+      return true;
+    }
+
+    return {
+      complete: function () {
+        settleRound(function () {
+          var currentId = state.current.id;
+          var rarity = getPluginRarity(state.current);
+          state.weights[currentId] = updateWeight(state.weights[currentId], "success", WEIGHT_CFG);
+          state.score += rarity.bounty;
+          updateHud();
+          showCorrect(rarity);
+          burstConfetti();
+          window.setTimeout(function () {
+            if (isActiveRound()) {
+              nextCard("success");
+            }
+          }, 700);
+        });
+      },
+      fail: function () {
+        settleRound(function () {
+          window.setTimeout(function () {
+            if (isActiveRound()) {
+              nextCard("fail");
+            }
+          }, 120);
+        });
+      },
+      noteInteraction: function () {
+        if (isActiveRound()) {
+          extendRoundOnEngagement();
+        }
+      },
+      registerControl: function (element, options) {
+        if (isActiveRound()) {
+          registerRoundControl(element, options);
+        }
+      },
+      effects: {
+        confetti: function () {
+          if (isActiveRound()) {
+            burstConfetti();
+          }
+        },
+        toast: function (text) {
+          if (isActiveRound()) {
+            showToast(text || "");
+          }
+        }
+      },
+      session: {
+        getRemainingSeconds: function () {
+          if (!state.clock) {
+            return SESSION_SECONDS;
+          }
+          return state.clock.getRemaining();
+        }
+      }
+    };
+  }
+
+  function renderCard(plugin) {
     clearCard();
     el.card.classList.remove("enter");
+
+    var rarity = getPluginRarity(plugin);
     var head = document.createElement("div");
     head.className = "card-head";
-    head.textContent = game.label || "Mini-game";
+    head.textContent = plugin.title || "Mini-game";
+
+    var rarityChip = document.createElement("div");
+    rarityChip.className = "chip";
+    rarityChip.textContent = rarity.label + " \u2022 Bounty +" + String(rarity.bounty);
+    rarityChip.style.borderColor = rarity.color;
+    rarityChip.style.color = rarity.color;
+    rarityChip.style.background = "#fff8ec";
+    rarityChip.style.marginTop = "6px";
+    head.appendChild(document.createElement("br"));
+    head.appendChild(rarityChip);
 
     var body = document.createElement("div");
     body.className = "card-body";
@@ -177,34 +392,34 @@
     void el.card.offsetWidth;
     el.card.classList.add("enter");
 
-    if (typeof game.render === "function") {
-      state.cleanup = game.render(body, {
-        onSuccess: function () {
-          handleMiniGameSuccess(game.id);
-        },
-        showCorrect: showCorrect,
-        burstConfetti: burstConfetti
-      });
+    state.roundSeq += 1;
+    state.roundMs = clampRoundMs(plugin.timing && plugin.timing.roundMs, ROUND_MS);
+    state.engagedRoundMs = clampRoundMs(plugin.timing && plugin.timing.engagedRoundMs, ENGAGED_ROUND_MS);
+    if (state.engagedRoundMs < state.roundMs) {
+      state.engagedRoundMs = state.roundMs;
     }
-  }
+    state.roundExtended = false;
 
-  function handleMiniGameSuccess(id) {
-    if (!state.running || !state.current || state.current.id !== id) {
-      return;
-    }
-    state.weights[id] = updateWeight(state.weights[id], "success", WEIGHT_CFG);
-    state.score += 1;
-    updateHud();
-    showCorrect();
-    burstConfetti();
-    if (typeof state.current.onSuccess === "function") {
-      state.current.onSuccess({ score: state.score });
-    }
-    window.setTimeout(function () {
-      if (state.running && state.current && state.current.id === id) {
-        nextCard("success");
+    if (typeof plugin.mount === "function") {
+      try {
+        state.cleanup = plugin.mount(body, createEngineContextForRound(state.roundSeq));
+      } catch (err) {
+        var failed = makeFallbackPlugin(
+          {
+            id: plugin.id,
+            title: plugin.title,
+            icon: "⚠️",
+            hint: "This mini-game crashed while loading."
+          },
+          err && err.message
+        );
+        state.cleanup = failed.mount(body);
       }
-    }, 700);
+    }
+
+    if (typeof state.cleanup !== "function") {
+      state.cleanup = null;
+    }
   }
 
   function nextCard(reason) {
@@ -218,20 +433,19 @@
 
     window.clearTimeout(state.roundTimer);
     if (reason === "skip" && state.current) {
+      state.lastSkippedId = state.current.id;
       state.weights[state.current.id] = updateWeight(
         state.weights[state.current.id],
         "skip",
         WEIGHT_CFG
       );
-      if (typeof state.current.onSkip === "function") {
-        state.current.onSkip({ reason: reason });
-      }
     }
 
-    var pool = safeGames().map(function (game) {
+    var games = safeGames();
+    var pool = games.map(function (plugin) {
       return {
-        id: game.id,
-        weight: state.weights[game.id]
+        id: plugin.id,
+        weight: state.weights[plugin.id]
       };
     });
     var picked = chooseNext(pool, state.lastId);
@@ -240,34 +454,20 @@
       return;
     }
 
-    var game = safeGames().find(function (item) {
+    var plugin = games.find(function (item) {
       return item.id === picked.id;
     });
 
-    state.current = game;
-    state.lastId = game.id;
-    state.roundMaxMs = getRoundDurationMs(game.id);
-    renderCard(game);
+    if (!plugin) {
+      endSession("empty");
+      return;
+    }
+
+    state.current = plugin;
+    state.lastId = plugin.id;
+    renderCard(plugin);
     el.status.textContent = "Running";
-    state.roundTimer = window.setTimeout(function () {
-      nextCard("round-timeout");
-    }, state.roundMaxMs);
-  }
-
-  function extendRoundOnEngagement() {
-    if (!state.running || !state.current) {
-      return;
-    }
-    if (state.roundMaxMs >= ENGAGED_ROUND_MS) {
-      return;
-    }
-
-    state.roundMaxMs = ENGAGED_ROUND_MS;
-
-    window.clearTimeout(state.roundTimer);
-    state.roundTimer = window.setTimeout(function () {
-      nextCard("round-timeout");
-    }, ENGAGED_ROUND_MS);
+    setRoundTimer(state.roundMs);
   }
 
   function stopTimers() {
@@ -275,11 +475,15 @@
     window.clearTimeout(state.roundTimer);
     state.tickTimer = null;
     state.roundTimer = null;
-    state.roundMaxMs = ROUND_MS;
+    state.roundMs = ROUND_MS;
+    state.engagedRoundMs = ENGAGED_ROUND_MS;
+    state.roundExtended = false;
   }
 
   function endSession(reason) {
     state.running = false;
+    state.current = null;
+    state.lastSkippedId = null;
     stopTimers();
     clearCard();
     el.status.textContent = reason === "timeup" ? "Time is up" : "Session ended";
@@ -287,6 +491,7 @@
     var head = document.createElement("div");
     head.className = "card-head";
     head.textContent = "Final Score";
+
     var body = document.createElement("div");
     body.className = "card-body";
     body.innerHTML =
@@ -310,6 +515,7 @@
     state.running = true;
     state.score = 0;
     state.lastId = null;
+    state.lastSkippedId = null;
     state.current = null;
     state.clock = createSessionClock(SESSION_SECONDS);
     state.clock.start();
@@ -334,24 +540,58 @@
     nextCard("skip");
   }
 
+  function handleRestoreLastSkippedGesture() {
+    if (!state.running || !state.current || !state.lastSkippedId) {
+      return;
+    }
+    if (state.current.id === state.lastSkippedId) {
+      return;
+    }
+
+    var plugin = safeGames().find(function (item) {
+      return item.id === state.lastSkippedId;
+    });
+    if (!plugin) {
+      state.lastSkippedId = null;
+      return;
+    }
+
+    window.clearTimeout(state.roundTimer);
+    state.current = plugin;
+    state.lastId = plugin.id;
+    state.lastSkippedId = null;
+    renderCard(plugin);
+    el.status.textContent = "Running";
+    setRoundTimer(state.roundMs);
+    showToast("Reopened skipped game");
+  }
+
+  function resolveCardSwipeDirection(dx, dy, dt) {
+    if (typeof classifyCardSwipe === "function") {
+      return classifyCardSwipe({ dx: dx, dy: dy, dt: dt });
+    }
+    if (dt > 800) {
+      return null;
+    }
+    if (Math.abs(dy) < 90) {
+      return null;
+    }
+    if (Math.abs(dy) <= Math.abs(dx) * 1.3) {
+      return null;
+    }
+    return dy < 0 ? "up" : "down";
+  }
+
   function bindSwipeGesture() {
     el.card.addEventListener("pointerdown", function (evt) {
-      var target = evt.target;
-      var gameControl = target && target.closest(".card-body button");
-      if (!gameControl) {
-        return;
-      }
-      extendRoundOnEngagement();
-    }, true);
-
-    el.card.addEventListener("pointerdown", function (evt) {
-      var target = evt.target;
-      var gameControl = target && target.closest(".card-body button");
-      var allowSwipeOnControl = target && target.closest("[data-allow-swipe-skip='1']");
-      if (gameControl && !allowSwipeOnControl) {
-        swipe.active = false;
-        swipe.id = -1;
-        return;
+      var control = getControlForTarget(evt.target);
+      if (control) {
+        extendRoundOnEngagement();
+        if (!control.allowSwipeSkip) {
+          swipe.active = false;
+          swipe.id = -1;
+          return;
+        }
       }
       swipe.active = true;
       swipe.x = evt.clientX;
@@ -373,11 +613,11 @@
       var dy = evt.clientY - swipe.y;
       var dt = Date.now() - swipe.t;
       resetSwipe();
-      if (dt > 800) {
-        return;
-      }
-      if (dy < -90 && Math.abs(dy) > Math.abs(dx) * 1.3) {
+      var direction = resolveCardSwipeDirection(dx, dy, dt);
+      if (direction === "up") {
         handleSkipGesture();
+      } else if (direction === "down") {
+        handleRestoreLastSkippedGesture();
       }
     }, true);
 
@@ -391,7 +631,7 @@
       "<div class='card-body'>" +
       "<div>" +
       "<div class='placeholder-icon'>🚜</div>" +
-      "<div class='hint'>Tap start, clear mini-games, and swipe up to skip cards.</div>" +
+      "<div class='hint'>Tap start, clear mini-games, swipe up to skip, and swipe down to reopen the last skipped game.</div>" +
       "<div class='chip'>90-second session</div>" +
       "</div>" +
       "</div>" +
@@ -407,5 +647,5 @@
   window.endSession = endSession;
   window.nextCard = nextCard;
   window.handleSkipGesture = handleSkipGesture;
-  window.handleMiniGameSuccess = handleMiniGameSuccess;
+  window.handleRestoreLastSkippedGesture = handleRestoreLastSkippedGesture;
 }());

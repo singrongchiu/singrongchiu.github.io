@@ -1,14 +1,18 @@
 (function () {
   "use strict";
 
-  var TARGET_GOOD = 6;
+  var TARGET_GOOD = 4;
   var CANOPY_LEFT = 16;
   var CANOPY_RIGHT = 84;
   var SPAWN_MIN_MS = 600;
   var SPAWN_MAX_MS = 1200;
-  var SPEED_MIN = 90;
-  var SPEED_MAX = 170;
+  var SPEED_MIN = 130;
+  var SPEED_MAX = 240;
   var BASKET_WIDTH = 86;
+  var SWIPE_MIN_DX = 42;
+  var SWIPE_MAX_DT = 460;
+  var SWIPE_DOMINANCE = 1.15;
+  var SWIPE_STEP = 14;
 
   var ITEM_TYPES = [
     { type: "apple", isGood: true, value: 10, className: "is-apple" },
@@ -32,16 +36,46 @@
     return ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
   }
 
-  function createHarvestGame() {
+  function getHorizontalSwipeDirection(gesture) {
+    if (!gesture || typeof gesture !== "object") {
+      return 0;
+    }
+    var dx = Number(gesture.dx);
+    var dy = Number(gesture.dy);
+    var dt = Number(gesture.dt);
+    if (!Number.isFinite(dx) || !Number.isFinite(dy) || !Number.isFinite(dt)) {
+      return 0;
+    }
+    if (dt <= 0 || dt > SWIPE_MAX_DT) {
+      return 0;
+    }
+    if (Math.abs(dx) < SWIPE_MIN_DX) {
+      return 0;
+    }
+    if (Math.abs(dx) < Math.abs(dy) * SWIPE_DOMINANCE) {
+      return 0;
+    }
+    return dx > 0 ? 1 : -1;
+  }
+
+  function createMiniGamePlugin() {
     return {
       id: "harvest",
-      label: "Harvest Catch",
-      weight: 1,
-      playable: true,
-      render: function (mount, ctx) {
-        var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function"
-          ? callbacks.onSuccess
+      title: "Harvest Catch",
+      initialWeight: 1,
+      timing: {
+        roundMs: 18000
+      },
+      mount: function (mount, engine) {
+        var api = engine || {};
+        var complete = typeof api.complete === "function"
+          ? api.complete
+          : function () {};
+        var noteInteraction = typeof api.noteInteraction === "function"
+          ? api.noteInteraction
+          : function () {};
+        var registerControl = typeof api.registerControl === "function"
+          ? api.registerControl
           : function () {};
 
         var done = false;
@@ -53,12 +87,13 @@
         var sceneRect = null;
         var basketX = 50;
         var basketPxX = 0;
-        var drag = { active: false, id: -1, offsetX: 0 };
+        var drag = { active: false, id: -1, offsetX: 0, startX: 0, startY: 0, startTime: 0 };
         var itemId = 0;
         var items = [];
 
         mount.innerHTML =
           "<div class='harvest-game'>" +
+          "<div class='chip mini-instruction harvest-help'>Swipe, drag basket, or use arrow keys</div>" +
           "<div class='harvest-hud'>" +
           "<span class='chip harvest-chip'>Score: <span data-score='1'>0</span></span>" +
           "<span class='chip harvest-chip'>Good: <span data-good='1'>0/" + TARGET_GOOD + "</span></span>" +
@@ -69,7 +104,6 @@
           "<button type='button' class='harvest-basket' aria-label='Move basket'></button>" +
           "<div class='harvest-feedback'></div>" +
           "</div>" +
-          "<div class='chip harvest-chip harvest-help'>Drag basket or use arrow keys</div>" +
           "</div>";
 
         var scoreNode = mount.querySelector("[data-score='1']");
@@ -78,6 +112,7 @@
         var fallsLayer = mount.querySelector(".harvest-falls");
         var basketNode = mount.querySelector(".harvest-basket");
         var feedbackLayer = mount.querySelector(".harvest-feedback");
+        registerControl(scene, { allowSwipeSkip: true });
 
         function updateHud() {
           scoreNode.textContent = String(score);
@@ -140,7 +175,7 @@
           done = true;
           window.clearTimeout(spawnTimer);
           window.setTimeout(function () {
-            onSuccess();
+            complete();
           }, 260);
         }
 
@@ -265,6 +300,9 @@
           drag.active = true;
           drag.id = evt.pointerId;
           drag.offsetX = basketX - toPercentX(evt.clientX);
+          drag.startX = evt.clientX;
+          drag.startY = evt.clientY;
+          drag.startTime = Date.now();
           if (typeof scene.setPointerCapture === "function") {
             try {
               scene.setPointerCapture(evt.pointerId);
@@ -284,12 +322,38 @@
           evt.preventDefault();
         }
 
-        function clearDrag(evt) {
+        function resetDrag() {
+          drag.active = false;
+          drag.id = -1;
+          drag.startX = 0;
+          drag.startY = 0;
+          drag.startTime = 0;
+        }
+
+        function onScenePointerUp(evt) {
           if (!drag.active || drag.id !== evt.pointerId) {
             return;
           }
-          drag.active = false;
-          drag.id = -1;
+          if (!done) {
+            var direction = getHorizontalSwipeDirection({
+              dx: evt.clientX - drag.startX,
+              dy: evt.clientY - drag.startY,
+              dt: Date.now() - drag.startTime
+            });
+            if (direction !== 0) {
+              noteInteraction();
+              basketX = clamp(basketX + (direction * SWIPE_STEP), 6, 94);
+              applyBasketPosition();
+            }
+          }
+          resetDrag();
+        }
+
+        function onScenePointerCancel(evt) {
+          if (!drag.active || drag.id !== evt.pointerId) {
+            return;
+          }
+          resetDrag();
         }
 
         function onKeyDown(evt) {
@@ -297,10 +361,12 @@
             return;
           }
           if (evt.key === "ArrowLeft") {
+            noteInteraction();
             basketX = clamp(basketX - 5, 6, 94);
             applyBasketPosition();
             evt.preventDefault();
           } else if (evt.key === "ArrowRight") {
+            noteInteraction();
             basketX = clamp(basketX + 5, 6, 94);
             applyBasketPosition();
             evt.preventDefault();
@@ -309,14 +375,15 @@
 
         scene.addEventListener("pointerdown", onScenePointerDown);
         scene.addEventListener("pointermove", onScenePointerMove);
-        scene.addEventListener("pointerup", clearDrag);
-        scene.addEventListener("pointercancel", clearDrag);
+        scene.addEventListener("pointerup", onScenePointerUp);
+        scene.addEventListener("pointercancel", onScenePointerCancel);
         scene.addEventListener("keydown", onKeyDown);
         window.addEventListener("resize", onResize);
 
         refreshSceneRect();
         applyBasketPosition();
         updateHud();
+        createItem();
         scheduleSpawn();
         rafId = window.requestAnimationFrame(step);
 
@@ -326,8 +393,8 @@
           window.removeEventListener("resize", onResize);
           scene.removeEventListener("pointerdown", onScenePointerDown);
           scene.removeEventListener("pointermove", onScenePointerMove);
-          scene.removeEventListener("pointerup", clearDrag);
-          scene.removeEventListener("pointercancel", clearDrag);
+          scene.removeEventListener("pointerup", onScenePointerUp);
+          scene.removeEventListener("pointercancel", onScenePointerCancel);
           scene.removeEventListener("keydown", onKeyDown);
           items.slice().forEach(removeItem);
         };
@@ -338,7 +405,8 @@
   var api = {
     TARGET_GOOD: TARGET_GOOD,
     ITEM_TYPES: ITEM_TYPES.slice(),
-    createHarvestGame: createHarvestGame
+    getHorizontalSwipeDirection: getHorizontalSwipeDirection,
+    createMiniGamePlugin: createMiniGamePlugin
   };
 
   if (typeof module !== "undefined" && module.exports) {

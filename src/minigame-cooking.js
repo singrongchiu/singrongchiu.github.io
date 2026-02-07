@@ -1,20 +1,52 @@
 (function () {
   "use strict";
 
-  var RECIPE = {
-    required: ["eggs", "milk"],
-    bowl: "bowl"
-  };
-
-  var STARTING_ITEMS = [
-    { id: "eggs", name: "Eggs", type: "ingredient", state: "raw", zone: "counter" },
-    { id: "milk", name: "Milk", type: "ingredient", state: "cold", zone: "counter" },
-    { id: "bowl", name: "Bowl", type: "tool", zone: "counter" }
+  var RECIPES = [
+    {
+      id: "omelet",
+      required: ["eggs", "milk"],
+      available: ["eggs", "milk", "flour"],
+      bowl: "bowl"
+    },
+    {
+      id: "salad",
+      required: ["tomato", "lettuce"],
+      available: ["tomato", "lettuce", "cheese"],
+      bowl: "bowl"
+    },
+    {
+      id: "smoothie",
+      required: ["banana", "berries"],
+      available: ["banana", "berries", "spinach"],
+      bowl: "bowl"
+    }
   ];
+
+  var RECIPE = RECIPES[0];
+
+  var ITEM_LIBRARY = {
+    eggs: { id: "eggs", name: "Eggs", type: "ingredient", state: "raw", zone: "counter" },
+    milk: { id: "milk", name: "Milk", type: "ingredient", state: "cold", zone: "counter" },
+    flour: { id: "flour", name: "Flour", type: "ingredient", state: "dry", zone: "counter" },
+    tomato: { id: "tomato", name: "Tomato", type: "ingredient", state: "fresh", zone: "counter" },
+    lettuce: { id: "lettuce", name: "Lettuce", type: "ingredient", state: "fresh", zone: "counter" },
+    cheese: { id: "cheese", name: "Cheese", type: "ingredient", state: "sliced", zone: "counter" },
+    banana: { id: "banana", name: "Banana", type: "ingredient", state: "ripe", zone: "counter" },
+    berries: { id: "berries", name: "Berries", type: "ingredient", state: "fresh", zone: "counter" },
+    spinach: { id: "spinach", name: "Spinach", type: "ingredient", state: "fresh", zone: "counter" },
+    bowl: { id: "bowl", name: "Bowl", type: "tool", state: "", zone: "counter" }
+  };
 
   var ITEM_VISUALS = {
     eggs: { icon: "🥚", name: "Eggs" },
     milk: { icon: "🥛", name: "Milk" },
+    flour: { icon: "🌾", name: "Flour" },
+    tomato: { icon: "🍅", name: "Tomato" },
+    lettuce: { icon: "🥬", name: "Lettuce" },
+    cheese: { icon: "🧀", name: "Cheese" },
+    banana: { icon: "🍌", name: "Banana" },
+    berries: { icon: "🫐", name: "Berries" },
+    spinach: { icon: "🥗", name: "Spinach" },
     bowl: { icon: "🥣", name: "Bowl" }
   };
 
@@ -24,12 +56,58 @@
       name: String(item.name || item.id),
       type: String(item.type || "ingredient"),
       state: item.state ? String(item.state) : "",
-      zone: item.zone === "work" ? "work" : "counter"
+      zone: item.zone === "work" ? "work" : "counter",
+      consumed: item.consumed === true
     };
   }
 
-  function createInitialItems() {
-    return STARTING_ITEMS.map(cloneItem).map(function (item, index) {
+  function isValidRecipe(recipe) {
+    if (!recipe || typeof recipe !== "object") {
+      return false;
+    }
+    if (!Array.isArray(recipe.required) || recipe.required.length !== 2) {
+      return false;
+    }
+    if (!Array.isArray(recipe.available) || recipe.available.length !== 3) {
+      return false;
+    }
+    return recipe.required.every(function (id) {
+      return recipe.available.indexOf(String(id)) >= 0;
+    });
+  }
+
+  function normalizeRecipe(recipe) {
+    if (isValidRecipe(recipe)) {
+      return recipe;
+    }
+    return RECIPE;
+  }
+
+  function createStartingItems(recipe) {
+    var activeRecipe = normalizeRecipe(recipe);
+    var ingredients = activeRecipe.available.map(function (itemId) {
+      var known = ITEM_LIBRARY[String(itemId)];
+      if (known) {
+        return cloneItem(known);
+      }
+      return {
+        id: String(itemId),
+        name: String(itemId),
+        type: "ingredient",
+        state: "",
+        zone: "counter"
+      };
+    });
+    var bowlId = String(activeRecipe.bowl || "bowl");
+    var bowlItem = ITEM_LIBRARY[bowlId] || ITEM_LIBRARY.bowl;
+    ingredients.push(cloneItem(bowlItem));
+    return ingredients;
+  }
+
+  var STARTING_ITEMS = createStartingItems(RECIPE);
+
+  function createInitialItems(recipe) {
+    return createStartingItems(recipe).map(cloneItem).map(function (item, index) {
       item.instanceId = "start_" + String(index + 1);
       return item;
     });
@@ -43,25 +121,64 @@
     };
   }
 
-  function isRequiredIngredient(itemId) {
-    return RECIPE.required.indexOf(String(itemId)) >= 0;
+  function isRequiredIngredient(itemId, recipe) {
+    var activeRecipe = normalizeRecipe(recipe);
+    return activeRecipe.required.indexOf(String(itemId)) >= 0;
   }
 
-  function createCookingGame() {
+  function pickRandomRecipe() {
+    if (!RECIPES.length) {
+      return RECIPE;
+    }
+    var index = Math.floor(Math.random() * RECIPES.length);
+    return normalizeRecipe(RECIPES[index]);
+  }
+
+  function shuffleItems(list) {
+    var shuffled = Array.isArray(list) ? list.slice() : [];
+    var i = 0;
+    for (i = shuffled.length - 1; i > 0; i -= 1) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = tmp;
+    }
+    return shuffled;
+  }
+
+  function createMiniGamePlugin() {
     return {
       id: "cooking",
-      label: "🍳",
-      weight: 1,
-      playable: true,
-      render: function (mount, ctx) {
-        var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function" ? callbacks.onSuccess : function () {};
-        var burstConfetti = typeof callbacks.burstConfetti === "function" ? callbacks.burstConfetti : function () {};
+      title: "🍳",
+      initialWeight: 1,
+      timing: {
+        roundMs: 20000
+      },
+      mount: function (mount, engine) {
+        var api = engine || {};
+        var complete = typeof api.complete === "function" ? api.complete : function () {};
+        var registerControl = typeof api.registerControl === "function"
+          ? api.registerControl
+          : function () {};
+        var burstConfetti = api.effects && typeof api.effects.confetti === "function"
+          ? api.effects.confetti
+          : function () {};
 
-        var items = createInitialItems().filter(function (item) {
-          return item.id !== RECIPE.bowl;
-        });
-        var added = { eggs: false, milk: false };
+        var activeRecipe = pickRandomRecipe();
+        var requiredA = activeRecipe.required[0];
+        var requiredB = activeRecipe.required[1];
+        var requiredVisualA = getItemVisual(requiredA, requiredA);
+        var requiredVisualB = getItemVisual(requiredB, requiredB);
+
+        var items = shuffleItems(
+          createInitialItems(activeRecipe).filter(function (item) {
+            return item.id !== activeRecipe.bowl;
+          })
+        );
+        var added = {};
+        added[requiredA] = false;
+        added[requiredB] = false;
+
         var selectedId = "";
         var done = false;
         var drag = {
@@ -75,21 +192,16 @@
           bowlHot: false
         };
 
-        var parentCard = mount.parentNode;
-        var hintNode = parentCard ? parentCard.querySelector(".hint") : null;
-        var headNode = parentCard ? parentCard.querySelector(".card-head") : null;
-        var previousHintText = hintNode ? hintNode.textContent : "";
-        var previousHeadText = headNode ? headNode.textContent : "";
-
-        if (hintNode) {
-          hintNode.textContent = "";
-        }
-        if (headNode) {
-          headNode.textContent = "🍳";
-        }
-
         mount.innerHTML =
           "<div class='cooking-game cooking-game-icons'>" +
+          "<div class='cooking-recipe-bottom'>" +
+          "<span class='recipe-dot recipe-required-1'>" + requiredVisualA.icon + "</span>" +
+          "<span class='recipe-plus'>+</span>" +
+          "<span class='recipe-dot recipe-required-2'>" + requiredVisualB.icon + "</span>" +
+          "<span class='recipe-arrow'>→</span>" +
+          "<span class='recipe-dot recipe-bowl'>🥣</span>" +
+          "</div>" +
+          "<div class='chip mini-instruction cooking-chip'>Drag " + requiredVisualA.name.toLowerCase() + " and " + requiredVisualB.name.toLowerCase() + " into the bowl</div>" +
           "<div class='cooking-scene'>" +
           "<div class='cooking-counter'></div>" +
           "<div class='cooking-bowl-wrap'>" +
@@ -97,18 +209,7 @@
           "<span class='cooking-bowl-main'>🥣</span>" +
           "<span class='cooking-bowl-fill'></span>" +
           "</button>" +
-          "<div class='cooking-bowl-slots'>" +
-          "<span class='cooking-slot' data-slot='eggs'></span>" +
-          "<span class='cooking-slot' data-slot='milk'></span>" +
           "</div>" +
-          "</div>" +
-          "</div>" +
-          "<div class='cooking-recipe-bottom'>" +
-          "<span class='recipe-dot recipe-egg'>🥚</span>" +
-          "<span class='recipe-plus'>+</span>" +
-          "<span class='recipe-dot recipe-milk'>🥛</span>" +
-          "<span class='recipe-arrow'>→</span>" +
-          "<span class='recipe-dot recipe-bowl'>🥣</span>" +
           "</div>" +
           "</div>";
 
@@ -117,11 +218,10 @@
         var recipeBottomNode = mount.querySelector(".cooking-recipe-bottom");
         var bowlNode = mount.querySelector(".cooking-bowl");
         var bowlFillNode = mount.querySelector(".cooking-bowl-fill");
-        var bowlSlotsNode = mount.querySelector(".cooking-bowl-slots");
-        var eggSlotNode = mount.querySelector(".cooking-slot[data-slot='eggs']");
-        var milkSlotNode = mount.querySelector(".cooking-slot[data-slot='milk']");
-        var recipeEggNode = mount.querySelector(".recipe-egg");
-        var recipeMilkNode = mount.querySelector(".recipe-milk");
+        var recipeRequiredANode = mount.querySelector(".recipe-required-1");
+        var recipeRequiredBNode = mount.querySelector(".recipe-required-2");
+        registerControl(counterNode, { allowSwipeSkip: true });
+        registerControl(bowlNode, { allowSwipeSkip: true });
 
         function findItem(instanceId) {
           var i = 0;
@@ -133,10 +233,12 @@
           return null;
         }
 
-        function removeItem(instanceId) {
-          items = items.filter(function (item) {
-            return item.instanceId !== instanceId;
-          });
+        function consumeItem(instanceId) {
+          var item = findItem(instanceId);
+          if (!item) {
+            return;
+          }
+          item.consumed = true;
         }
 
         function renderItems() {
@@ -145,18 +247,22 @@
             if (item.instanceId === selectedId) {
               classes += " is-selected";
             }
+            if (item.consumed) {
+              classes += " is-consumed";
+            }
             var visual = getItemVisual(item.id, item.name);
+            var isHidden = item.consumed;
             return (
-              "<button type='button' class='" + classes + "' data-item='" + item.instanceId + "'>" +
-              "<span class='cooking-item-icon'>" + visual.icon + "</span>" +
+              "<button type='button' class='" + classes + "' data-item='" + item.instanceId + "'" + (isHidden ? " aria-hidden='true' disabled='disabled'" : "") + ">" +
+              "<span class='cooking-item-icon'>" + (isHidden ? "" : visual.icon) + "</span>" +
               "</button>"
             );
           }).join("");
         }
 
         function renderBowl() {
-          var level = (added.eggs ? 1 : 0) + (added.milk ? 1 : 0);
-          var growBowl = !done;
+          var level = (added[requiredA] ? 1 : 0) + (added[requiredB] ? 1 : 0);
+          var growBowl = level > 0;
           if (gameNode) {
             gameNode.classList.toggle("is-complete", done);
           }
@@ -165,22 +271,19 @@
           }
           bowlNode.classList.toggle("is-stage-1", growBowl && level === 1);
           bowlNode.classList.toggle("is-stage-2", growBowl && level === 2);
-          eggSlotNode.classList.toggle("is-added", added.eggs);
-          milkSlotNode.classList.toggle("is-added", added.milk);
-          recipeEggNode.classList.toggle("is-added", added.eggs);
-          recipeMilkNode.classList.toggle("is-added", added.milk);
-          bowlSlotsNode.classList.toggle("is-hidden", done);
+          recipeRequiredANode.classList.toggle("is-added", added[requiredA]);
+          recipeRequiredBNode.classList.toggle("is-added", added[requiredB]);
 
           if (done) {
-            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>🥚</span><span class='cooking-fill-dot'>🥛</span><span class='cooking-fill-dot'>✨</span>";
+            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>" + requiredVisualA.icon + "</span><span class='cooking-fill-dot'>" + requiredVisualB.icon + "</span><span class='cooking-fill-dot'>✨</span>";
             return;
           }
-          if (added.eggs) {
-            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>🥚</span>";
+          if (added[requiredA]) {
+            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>" + requiredVisualA.icon + "</span>";
             return;
           }
-          if (added.milk) {
-            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>🥛</span>";
+          if (added[requiredB]) {
+            bowlFillNode.innerHTML = "<span class='cooking-fill-dot'>" + requiredVisualB.icon + "</span>";
             return;
           }
           bowlFillNode.innerHTML = "";
@@ -260,12 +363,12 @@
         }
 
         function maybeCompleteRecipe() {
-          if (!done && added.eggs && added.milk) {
+          if (!done && added[requiredA] && added[requiredB]) {
             done = true;
             renderBowl();
             burstConfetti();
             window.setTimeout(function () {
-              onSuccess();
+              complete();
             }, 350);
           }
         }
@@ -278,7 +381,7 @@
           if (!item) {
             return;
           }
-          if (!isRequiredIngredient(item.id)) {
+          if (!isRequiredIngredient(item.id, activeRecipe)) {
             selectedId = "";
             renderItems();
             return;
@@ -289,7 +392,7 @@
             return;
           }
           added[item.id] = true;
-          removeItem(item.instanceId);
+          consumeItem(item.instanceId);
           selectedId = "";
           renderItems();
           renderBowl();
@@ -316,6 +419,9 @@
           }
           var item = findItem(instanceId);
           if (!item) {
+            return;
+          }
+          if (item.consumed) {
             return;
           }
           var visual = getItemVisual(item.id, item.name);
@@ -383,23 +489,18 @@
           window.removeEventListener("pointerup", onPointerUp);
           window.removeEventListener("pointercancel", onPointerCancel);
           clearDragState();
-          if (hintNode) {
-            hintNode.textContent = previousHintText;
-          }
-          if (headNode) {
-            headNode.textContent = previousHeadText;
-          }
         };
       }
     };
   }
 
   var api = {
+    RECIPES: RECIPES,
     RECIPE: RECIPE,
     STARTING_ITEMS: STARTING_ITEMS,
     createInitialItems: createInitialItems,
     isRequiredIngredient: isRequiredIngredient,
-    createCookingGame: createCookingGame
+    createMiniGamePlugin: createMiniGamePlugin
   };
 
   if (typeof module !== "undefined" && module.exports) {

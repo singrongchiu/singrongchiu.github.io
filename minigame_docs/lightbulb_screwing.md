@@ -1,5 +1,10 @@
 Lightbulb Screwing:
 
+Rarity:
+- Tier: Uncommon
+- Color: `#3f7fd6`
+- Bounty: `2`
+
 Scene & Objects:
 - Display a lamp with exactly 1 empty socket (no bulb installed).
 - Display exactly 1 lightbulb aligned above the socket.
@@ -16,6 +21,7 @@ Gameplay:
   - Partially Screwed (2) → Fully Screwed (3)
 
 - The lamp’s glow becomes brighter with each completed swipe step (3 brightness levels corresponding to steps 1–3).
+- Each completed swipe should show a visible in-place twist of the bulb (side-profile screw motion), while the bulb seats slightly deeper into the socket.
 - After the bulb is Fully Screwed (3), additional right-swipes do nothing (no unscrewing, no extra brightness).
 
 Win Condition:

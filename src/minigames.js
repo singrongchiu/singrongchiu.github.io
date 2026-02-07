@@ -1,134 +1,193 @@
 (function () {
   "use strict";
 
-  var burgerApi = window.BurgerMiniGame || null;
-  var lightbulbApi = window.LightbulbMiniGame || null;
-  var pipeApi = window.PipeTurningMiniGame || null;
-  var vanishingApi = window.VanishingPathMiniGame || null;
-  var plantApi = window.PlantWaterMiniGame || null;
-  var cookingApi = window.CookingMiniGame || null;
-  var dinosaurApi = window.DinosaurMiniGame || null;
-  var harvestApi = window.HarvestMiniGame || null;
+  var root = typeof window !== "undefined" ? window : {};
+  var core = root.FrameworkCore || {};
+  var normalizeGamePlugin = core.normalizeGamePlugin;
+  var createFallbackPlugin = core.createFallbackPlugin;
+  var RARITY = {
+    UNCOMMON: { label: "Uncommon", color: "#3f7fd6", bounty: 2 },
+    ELITE: { label: "Elite", color: "#d48732", bounty: 3 },
+    LEGENDARY: { label: "Legendary", color: "#b8812a", bounty: 4 }
+  };
 
-  function makePlaceholder(game) {
+  var descriptors = [
+    {
+      id: "burger",
+      title: "Burger Flipping",
+      icon: "🍔",
+      hint: "Burger mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "BurgerMiniGame"
+    },
+    {
+      id: "bulb",
+      title: "Lamp Twist",
+      icon: "💡",
+      hint: "Lightbulb mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "LightbulbMiniGame"
+    },
+    {
+      id: "pipe",
+      title: "Pipe Grid",
+      icon: "🧩",
+      hint: "Pipe mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "PipeTurningMiniGame"
+    },
+    {
+      id: "vanish",
+      title: "Vanishing Path",
+      icon: "🧠",
+      hint: "Vanishing path mini-game slot",
+      rarity: RARITY.ELITE,
+      apiName: "VanishingPathMiniGame"
+    },
+    {
+      id: "plant",
+      title: "Plant Watering",
+      icon: "🌱",
+      hint: "Plant mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "PlantWaterMiniGame"
+    },
+    {
+      id: "cooking",
+      title: "🍳",
+      icon: "🧁",
+      hint: "Cooking mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "CookingMiniGame"
+    },
+    {
+      id: "dinosaur",
+      title: "Dino Petting",
+      icon: "🦖",
+      hint: "Dinosaur mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "DinosaurMiniGame"
+    },
+    {
+      id: "slingshot",
+      title: "Slingshot Launch",
+      icon: "🎯",
+      hint: "Slingshot mini-game slot",
+      rarity: RARITY.ELITE,
+      apiName: "SlingshotMiniGame"
+    },
+    {
+      id: "maze",
+      title: "Maze Runner",
+      icon: "🏃",
+      hint: "Maze runner mini-game slot",
+      rarity: { label: "Elite", color: "#58a05a", bounty: 3 },
+      apiName: "MazeRunnerMiniGame"
+    },
+    {
+      id: "baseball",
+      title: "Baseball Meter Swing",
+      icon: "⚾",
+      hint: "Baseball meter mini-game slot",
+      rarity: RARITY.ELITE,
+      apiName: "BaseballMeterMiniGame"
+    },
+    {
+      id: "harvest",
+      title: "Harvest Catch",
+      icon: "🍎",
+      hint: "Harvest mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "HarvestMiniGame"
+    },
+    {
+      id: "eightball",
+      title: "8-Ball One Shot",
+      icon: "🎱",
+      hint: "8-ball mini-game slot",
+      rarity: RARITY.LEGENDARY,
+      apiName: "EightBallMiniGame"
+    },
+    {
+      id: "wires",
+      title: "Connect Wires",
+      icon: "🔌",
+      hint: "Connect-the-wires mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "ConnectWiresMiniGame"
+    },
+    {
+      id: "letterfill",
+      title: "Letter Filling",
+      icon: "🔤",
+      hint: "Letter-filling mini-game slot",
+      rarity: RARITY.UNCOMMON,
+      apiName: "LetterFillingMiniGame"
+    }
+  ];
+
+  function makeFallback(descriptor, reason) {
+    var meta = {
+      id: descriptor.id,
+      title: descriptor.title,
+      initialWeight: 1,
+      icon: descriptor.icon,
+      hint: descriptor.hint,
+      rarity: descriptor.rarity
+    };
+
+    if (typeof createFallbackPlugin === "function") {
+      return createFallbackPlugin(meta, reason);
+    }
+
     return {
-      id: game.id,
-      label: game.label,
-      weight: game.weight,
-      playable: false,
-      render: function (mount) {
+      id: descriptor.id,
+      title: descriptor.title,
+      initialWeight: 1,
+      timing: {
+        roundMs: 7000,
+        engagedRoundMs: 25000
+      },
+      mount: function (mount) {
         mount.innerHTML =
           "<div>" +
-          "<div class='placeholder-icon'>" + game.icon + "</div>" +
-          "<div class='hint'>" + game.hint + "</div>" +
+          "<div class='placeholder-icon'>" + descriptor.icon + "</div>" +
+          "<div class='hint'>" + descriptor.hint + "</div>" +
           "<div class='chip'>Framework placeholder only</div>" +
           "</div>";
       }
     };
   }
 
-  function buildGame(game) {
-    if (
-      game.id === "burger" &&
-      burgerApi &&
-      typeof burgerApi.createBurgerGame === "function"
-    ) {
-      try {
-        return burgerApi.createBurgerGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "bulb" &&
-      lightbulbApi &&
-      typeof lightbulbApi.createLightbulbGame === "function"
-    ) {
-      try {
-        return lightbulbApi.createLightbulbGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "pipe" &&
-      pipeApi &&
-      typeof pipeApi.createPipeTurningGame === "function"
-    ) {
-      try {
-        return pipeApi.createPipeTurningGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "vanish" &&
-      vanishingApi &&
-      typeof vanishingApi.createVanishingPathGame === "function"
-    ) {
-      try {
-        return vanishingApi.createVanishingPathGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "plant" &&
-      plantApi &&
-      typeof plantApi.createPlantWateringGame === "function"
-    ) {
-      try {
-        return plantApi.createPlantWateringGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "cooking" &&
-      cookingApi &&
-      typeof cookingApi.createCookingGame === "function"
-    ) {
-      try {
-        return cookingApi.createCookingGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "dinosaur" &&
-      dinosaurApi &&
-      typeof dinosaurApi.createDinosaurGame === "function"
-    ) {
-      try {
-        return dinosaurApi.createDinosaurGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    if (
-      game.id === "harvest" &&
-      harvestApi &&
-      typeof harvestApi.createHarvestGame === "function"
-    ) {
-      try {
-        return harvestApi.createHarvestGame();
-      } catch (err) {
-        return makePlaceholder(game);
-      }
-    }
-    return makePlaceholder(game);
+  function resolveApi(apiName) {
+    return root[apiName] || null;
   }
 
-  var miniGames = [
-    { id: "burger", label: "Burger Flipping", weight: 1, icon: "\ud83c\udf54", hint: "Burger mini-game slot" },
-    { id: "bulb", label: "Lamp Twist", weight: 1, icon: "\ud83d\udca1", hint: "Lightbulb mini-game slot" },
-    { id: "pipe", label: "Pipe Grid", weight: 1, icon: "\ud83e\udde9", hint: "Pipe mini-game slot" },
-    { id: "vanish", label: "Vanishing Path", weight: 1, icon: "\ud83e\udde0", hint: "Vanishing path mini-game slot" },
-    { id: "plant", label: "Plant Watering", weight: 1, icon: "\ud83c\udf31", hint: "Plant mini-game slot" },
-    { id: "cooking", label: "Ingredient Combining", weight: 1, icon: "\ud83e\uddc1", hint: "Cooking mini-game slot" },
-    { id: "dinosaur", label: "Dino Petting", weight: 1, icon: "\ud83e\udd96", hint: "Dinosaur mini-game slot" },
-    { id: "harvest", label: "Harvest Catch", weight: 1, icon: "\ud83c\udf4e", hint: "Harvest mini-game slot" }
-  ].map(buildGame);
+  function resolvePlugin(descriptor) {
+    var api = resolveApi(descriptor.apiName);
+    if (!api || typeof api.createMiniGamePlugin !== "function") {
+      return null;
+    }
+
+    try {
+      var plugin = api.createMiniGamePlugin();
+      if (typeof normalizeGamePlugin === "function") {
+        return normalizeGamePlugin(plugin, {
+          id: descriptor.id,
+          title: descriptor.title,
+          initialWeight: 1,
+          rarity: descriptor.rarity
+        });
+      }
+      return plugin;
+    } catch (err) {
+      return makeFallback(descriptor, err && err.message);
+    }
+  }
+
+  var miniGames = descriptors
+    .map(resolvePlugin)
+    .filter(Boolean);
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = miniGames;

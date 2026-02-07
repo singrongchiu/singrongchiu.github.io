@@ -1,5 +1,10 @@
 # Falling Fruit Catch Mini-Game (Tree + Basket)
 
+## Rarity
+- Tier: Uncommon
+- Color: `#3f7fd6`
+- Bounty: `2`
+
 ## Scene & Objects
 - Display a cheerful outdoor scene with a **single tree** centered near the top of the screen.
 - A **basket** (player-controlled) is shown near the bottom of the screen on the ground.
@@ -27,6 +32,7 @@ Each falling object has:
 ## Player Input
 - The player moves the basket **left and right** to catch objects.
 - Supported input options (choose one or more):
+  - **Swipe** left/right to nudge the basket.
   - **Drag** the basket horizontally.
   - **Tap** left/right buttons to move the basket.
   - **Keyboard** (desktop): Left Arrow / Right Arrow.

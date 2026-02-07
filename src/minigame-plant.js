@@ -3,6 +3,21 @@
 
   var PLANT_COUNT = 3;
   var REQUIRED_WATERINGS = 2;
+  var PLANT_DROP_PADDING = 28;
+  var POT_DROP_PADDING = 48;
+
+  function computeCenteredCanOffset(canRect, currentDragX, targetRect) {
+    if (!canRect || !targetRect) {
+      return 0;
+    }
+    var canCenterX = Number(canRect.left) + (Number(canRect.width) * 0.5);
+    var baseCanCenterX = canCenterX - (Number(currentDragX) || 0);
+    var targetCenterX = Number(targetRect.left) + (Number(targetRect.width) * 0.5);
+    if (!Number.isFinite(baseCanCenterX) || !Number.isFinite(targetCenterX)) {
+      return 0;
+    }
+    return targetCenterX - baseCanCenterX;
+  }
 
   function pickIndex(length, rng) {
     var random = typeof rng === "function" ? rng : Math.random;
@@ -58,24 +73,41 @@
     };
   }
 
-  function createPlantWateringGame() {
+  function createMiniGamePlugin() {
     return {
       id: "plant",
-      label: "Plant Watering",
-      weight: 1,
-      playable: true,
-      render: function (mount, ctx) {
-        var callbacks = ctx || {};
-        var onSuccess = typeof callbacks.onSuccess === "function"
-          ? callbacks.onSuccess
+      title: "Plant Watering",
+      initialWeight: 1,
+      timing: {
+        roundMs: 15000
+      },
+      mount: function (mount, engine) {
+        var api = engine || {};
+        var complete = typeof api.complete === "function"
+          ? api.complete
+          : function () {};
+        var registerControl = typeof api.registerControl === "function"
+          ? api.registerControl
           : function () {};
         var states = createInitialPlantStates();
         var wateredCount = 0;
         var done = false;
-        var drag = { active: false, id: -1, startX: 0, startY: 0, baseX: 0, baseY: 0, x: 0, y: 0 };
+        var drag = {
+          active: false,
+          id: -1,
+          startX: 0,
+          startY: 0,
+          baseX: 0,
+          baseY: 0,
+          x: 0,
+          y: 0,
+          homeX: 0,
+          homeY: 0
+        };
 
         mount.innerHTML =
           "<div class='plant-game'>" +
+          "<div class='chip mini-instruction plant-chip'>Drag can to dry plants</div>" +
           "<div class='garden-bed'>" +
           "<button type='button' class='plant-slot' data-plant='0' aria-label='Plant 1'>" +
           "<span class='plant-leaf leaf-a'></span>" +
@@ -107,12 +139,12 @@
           "<span class='can-handle'></span>" +
           "</button>" +
           "</div>" +
-          "<div class='chip plant-chip'>Drag can to dry plants</div>" +
           "</div>";
 
         var slots = Array.prototype.slice.call(mount.querySelectorAll(".plant-slot"));
         var can = mount.querySelector(".watering-can");
         var spout = mount.querySelector(".can-spout");
+        registerControl(can);
 
         function renderPlants() {
           slots.forEach(function (slot, i) {
@@ -121,7 +153,7 @@
             slot.classList.toggle("is-dry", !watered);
             var marker = slot.querySelector(".plant-state");
             if (marker) {
-              marker.textContent = watered ? "OK" : "!!";
+              marker.textContent = watered ? "✓" : "✕";
             }
           });
         }
@@ -130,11 +162,35 @@
           can.style.transform = "translate(" + drag.x + "px, " + drag.y + "px)";
         }
 
+        function centerTargetRect() {
+          var centerIndex = Math.floor(slots.length * 0.5);
+          var centerSlot = slots[centerIndex];
+          if (!centerSlot) {
+            return null;
+          }
+          var centerPot = centerSlot.querySelector(".plant-pot");
+          if (centerPot && typeof centerPot.getBoundingClientRect === "function") {
+            return centerPot.getBoundingClientRect();
+          }
+          if (typeof centerSlot.getBoundingClientRect === "function") {
+            return centerSlot.getBoundingClientRect();
+          }
+          return null;
+        }
+
+        function updateCanHome() {
+          var canRect = can.getBoundingClientRect();
+          var targetRect = centerTargetRect();
+          drag.homeX = computeCenteredCanOffset(canRect, drag.x, targetRect);
+          drag.homeY = 0;
+        }
+
         function resetCan() {
-          drag.x = 0;
-          drag.y = 0;
-          drag.baseX = 0;
-          drag.baseY = 0;
+          updateCanHome();
+          drag.x = drag.homeX;
+          drag.y = drag.homeY;
+          drag.baseX = drag.homeX;
+          drag.baseY = drag.homeY;
           applyCanTransform();
         }
 
@@ -162,15 +218,21 @@
           var p = 0;
           for (i = 0; i < slots.length; i += 1) {
             var slot = slots[i];
-            var marker = slot.querySelector(".plant-state");
+            var leafA = slot.querySelector(".leaf-a");
+            var leafB = slot.querySelector(".leaf-b");
+            var stem = slot.querySelector(".plant-stem");
             var pot = slot.querySelector(".plant-pot");
-            var markerRect = marker ? inflateRect(marker.getBoundingClientRect(), 12) : null;
-            var potRect = pot ? inflateRect(pot.getBoundingClientRect(), 16) : null;
+            var leafARect = leafA ? inflateRect(leafA.getBoundingClientRect(), PLANT_DROP_PADDING) : null;
+            var leafBRect = leafB ? inflateRect(leafB.getBoundingClientRect(), PLANT_DROP_PADDING) : null;
+            var stemRect = stem ? inflateRect(stem.getBoundingClientRect(), PLANT_DROP_PADDING) : null;
+            var potRect = pot ? inflateRect(pot.getBoundingClientRect(), POT_DROP_PADDING) : null;
             for (p = 0; p < points.length; p += 1) {
               var point = points[p];
-              var hitMarker = markerRect && pointInsideRect(point, markerRect);
+              var hitLeafA = leafARect && pointInsideRect(point, leafARect);
+              var hitLeafB = leafBRect && pointInsideRect(point, leafBRect);
+              var hitStem = stemRect && pointInsideRect(point, stemRect);
               var hitPot = potRect && pointInsideRect(point, potRect);
-              if (hitMarker || hitPot) {
+              if (hitLeafA || hitLeafB || hitStem || hitPot) {
                 return i;
               }
             }
@@ -181,10 +243,24 @@
         function buildDropPoints(canRect, spoutRect) {
           var points = [];
           if (spoutRect) {
-            points.push({
-              x: spoutRect.right,
-              y: spoutRect.top + (spoutRect.height * 0.5)
-            });
+            points.push(
+              {
+                x: spoutRect.right,
+                y: spoutRect.top + (spoutRect.height * 0.5)
+              },
+              {
+                x: spoutRect.right + 8,
+                y: spoutRect.top + (spoutRect.height * 0.5)
+              },
+              {
+                x: spoutRect.left + (spoutRect.width * 0.75),
+                y: spoutRect.top + (spoutRect.height * 0.2)
+              },
+              {
+                x: spoutRect.left + (spoutRect.width * 0.75),
+                y: spoutRect.top + (spoutRect.height * 0.8)
+              }
+            );
           }
           points.push(
             {
@@ -192,8 +268,20 @@
               y: canRect.top + (canRect.height * 0.5)
             },
             {
-              x: canRect.left + (canRect.width * 0.8),
+              x: canRect.left + (canRect.width * 0.75),
               y: canRect.top + (canRect.height * 0.55)
+            },
+            {
+              x: canRect.left + (canRect.width * 0.85),
+              y: canRect.top + (canRect.height * 0.3)
+            },
+            {
+              x: canRect.left + (canRect.width * 0.85),
+              y: canRect.top + (canRect.height * 0.8)
+            },
+            {
+              x: canRect.left + (canRect.width * 0.65),
+              y: canRect.top + (canRect.height * 0.35)
             }
           );
           return points;
@@ -222,7 +310,7 @@
             countDryPlants(states) === 0
           ) {
             done = true;
-            onSuccess();
+            complete();
           }
         }
 
@@ -298,10 +386,13 @@
   var api = {
     PLANT_COUNT: PLANT_COUNT,
     REQUIRED_WATERINGS: REQUIRED_WATERINGS,
+    PLANT_DROP_PADDING: PLANT_DROP_PADDING,
+    POT_DROP_PADDING: POT_DROP_PADDING,
     createInitialPlantStates: createInitialPlantStates,
     countDryPlants: countDryPlants,
     applyWatering: applyWatering,
-    createPlantWateringGame: createPlantWateringGame
+    computeCenteredCanOffset: computeCenteredCanOffset,
+    createMiniGamePlugin: createMiniGamePlugin
   };
 
   if (typeof module !== "undefined" && module.exports) {
