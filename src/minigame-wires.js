@@ -7,8 +7,9 @@
     { key: "blue", label: "Blue", color: "#4f8fdc" },
     { key: "green", label: "Green", color: "#49a55f" }
   ];
-  // Keeps sockets visually fixed while forcing non-trivial line routes.
+  var WIRE_STROKE_WIDTH = 6;
   var SOCKET_EXPECTED_WIRE = [2, 0, 1];
+  var NOOP = function () {};
 
   function normalizeIndex(value, length) {
     var n = Number(value);
@@ -16,10 +17,7 @@
     if (!Number.isInteger(n) || !Number.isInteger(size) || size <= 0) {
       return -1;
     }
-    if (n < 0 || n >= size) {
-      return -1;
-    }
-    return n;
+    return n >= 0 && n < size ? n : -1;
   }
 
   function createDisconnectedLinks() {
@@ -27,80 +25,74 @@
   }
 
   function normalizeLinks(list) {
-    var links = Array.isArray(list) ? list.slice(0, WIRE_COUNT) : createDisconnectedLinks();
-    while (links.length < WIRE_COUNT) {
-      links.push(-1);
+    var links = createDisconnectedLinks();
+    var i = 0;
+    if (!Array.isArray(list)) {
+      return links;
     }
-    return links.map(function (value) {
-      return Number.isInteger(value) ? value : -1;
-    });
+    for (i = 0; i < WIRE_COUNT; i += 1) {
+      links[i] = Number.isInteger(list[i]) ? list[i] : -1;
+    }
+    return links;
   }
 
   function normalizeExpected(list) {
-    var expected = Array.isArray(list) ? list.slice(0, WIRE_COUNT) : SOCKET_EXPECTED_WIRE.slice();
-    while (expected.length < WIRE_COUNT) {
-      expected.push(expected.length);
+    var expected = SOCKET_EXPECTED_WIRE.slice();
+    var i = 0;
+    if (!Array.isArray(list)) {
+      return expected;
     }
-    return expected.map(function (value, index) {
-      var safe = normalizeIndex(value, WIRE_COUNT);
-      return safe >= 0 ? safe : index;
-    });
+    for (i = 0; i < WIRE_COUNT; i += 1) {
+      var safe = normalizeIndex(list[i], WIRE_COUNT);
+      expected[i] = safe >= 0 ? safe : i;
+    }
+    return expected;
   }
 
   function countConnectedWires(wireToSocket) {
-    return normalizeLinks(wireToSocket).filter(function (socketIndex) {
-      return socketIndex >= 0;
-    }).length;
+    var links = normalizeLinks(wireToSocket);
+    var i = 0;
+    var count = 0;
+    for (i = 0; i < WIRE_COUNT; i += 1) {
+      if (links[i] >= 0) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   function isCorrectMatch(socketExpectedWire, wireIndex, socketIndex) {
-    var safeExpected = normalizeExpected(socketExpectedWire);
+    var expected = normalizeExpected(socketExpectedWire);
     var safeWireIndex = normalizeIndex(wireIndex, WIRE_COUNT);
     var safeSocketIndex = normalizeIndex(socketIndex, WIRE_COUNT);
     if (safeWireIndex < 0 || safeSocketIndex < 0) {
       return false;
     }
-    return safeExpected[safeSocketIndex] === safeWireIndex;
+    return expected[safeSocketIndex] === safeWireIndex;
   }
 
   function applyConnection(wireToSocket, socketToWire, wireIndex, socketIndex, socketExpectedWire) {
     var nextWireToSocket = normalizeLinks(wireToSocket);
     var nextSocketToWire = normalizeLinks(socketToWire);
-    var safeExpected = normalizeExpected(socketExpectedWire);
+    var expected = normalizeExpected(socketExpectedWire);
     var safeWireIndex = normalizeIndex(wireIndex, WIRE_COUNT);
     var safeSocketIndex = normalizeIndex(socketIndex, WIRE_COUNT);
+    var didConnect = false;
 
-    if (safeWireIndex < 0 || safeSocketIndex < 0) {
-      return {
-        didConnect: false,
-        wireToSocket: nextWireToSocket,
-        socketToWire: nextSocketToWire,
-        completed: countConnectedWires(nextWireToSocket) >= WIRE_COUNT
-      };
+    if (
+      safeWireIndex >= 0 &&
+      safeSocketIndex >= 0 &&
+      nextWireToSocket[safeWireIndex] < 0 &&
+      nextSocketToWire[safeSocketIndex] < 0 &&
+      expected[safeSocketIndex] === safeWireIndex
+    ) {
+      nextWireToSocket[safeWireIndex] = safeSocketIndex;
+      nextSocketToWire[safeSocketIndex] = safeWireIndex;
+      didConnect = true;
     }
 
-    if (nextWireToSocket[safeWireIndex] >= 0 || nextSocketToWire[safeSocketIndex] >= 0) {
-      return {
-        didConnect: false,
-        wireToSocket: nextWireToSocket,
-        socketToWire: nextSocketToWire,
-        completed: countConnectedWires(nextWireToSocket) >= WIRE_COUNT
-      };
-    }
-
-    if (!isCorrectMatch(safeExpected, safeWireIndex, safeSocketIndex)) {
-      return {
-        didConnect: false,
-        wireToSocket: nextWireToSocket,
-        socketToWire: nextSocketToWire,
-        completed: countConnectedWires(nextWireToSocket) >= WIRE_COUNT
-      };
-    }
-
-    nextWireToSocket[safeWireIndex] = safeSocketIndex;
-    nextSocketToWire[safeSocketIndex] = safeWireIndex;
     return {
-      didConnect: true,
+      didConnect: didConnect,
       wireToSocket: nextWireToSocket,
       socketToWire: nextSocketToWire,
       completed: countConnectedWires(nextWireToSocket) >= WIRE_COUNT
@@ -108,22 +100,20 @@
   }
 
   function createMeterMarkup() {
-    var html = "";
-    var i = 0;
-    for (i = 0; i < WIRE_COUNT; i += 1) {
-      html += "<span class='wires-meter-segment' data-meter='" + i + "' aria-hidden='true'></span>";
-    }
-    return html;
+    return (
+      "<span class='wires-meter-segment' data-meter='0' aria-hidden='true'></span>" +
+      "<span class='wires-meter-segment' data-meter='1' aria-hidden='true'></span>" +
+      "<span class='wires-meter-segment' data-meter='2' aria-hidden='true'></span>"
+    );
   }
 
   function createWireMarkup() {
     var html = "";
     var i = 0;
     for (i = 0; i < WIRE_COUNT; i += 1) {
-      var wire = WIRE_DEFS[i];
       html +=
         "<button type='button' class='wires-start' data-wire='" + i + "' " +
-        "style='--wire-color:" + wire.color + ";' aria-label='Drag " + wire.label + " wire'>" +
+        "style='--wire-color:" + WIRE_DEFS[i].color + ";' aria-label='Drag " + WIRE_DEFS[i].label + " wire'>" +
         "<span class='wires-start-dot'></span>" +
         "<span class='wires-start-pin'></span>" +
         "</button>";
@@ -132,11 +122,11 @@
   }
 
   function createSocketMarkup(socketExpectedWire) {
-    var safeExpected = normalizeExpected(socketExpectedWire);
+    var expected = normalizeExpected(socketExpectedWire);
     var html = "";
     var socketIndex = 0;
     for (socketIndex = 0; socketIndex < WIRE_COUNT; socketIndex += 1) {
-      var wire = WIRE_DEFS[safeExpected[socketIndex]];
+      var wire = WIRE_DEFS[expected[socketIndex]];
       html +=
         "<div class='wires-socket' data-socket='" + socketIndex + "' " +
         "style='--wire-color:" + wire.color + ";' aria-label='" + wire.label + " socket'>" +
@@ -147,17 +137,12 @@
   }
 
   function createLineMarkup() {
-    var html = "";
-    var i = 0;
-    for (i = 0; i < WIRE_COUNT; i += 1) {
-      html +=
-        "<line class='wires-line' data-wire-line='" + i + "' " +
-        "stroke='" + WIRE_DEFS[i].color + "' stroke-width='8' stroke-linecap='round'></line>";
-    }
-    html +=
-      "<line class='wires-line wires-active-line' data-active-wire='1' " +
-      "stroke='#7d94a8' stroke-width='8' stroke-linecap='round'></line>";
-    return html;
+    return (
+      "<line class='wires-line' data-wire-line='0' stroke='" + WIRE_DEFS[0].color + "' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>" +
+      "<line class='wires-line' data-wire-line='1' stroke='" + WIRE_DEFS[1].color + "' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>" +
+      "<line class='wires-line' data-wire-line='2' stroke='" + WIRE_DEFS[2].color + "' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>" +
+      "<line class='wires-line wires-active-line' data-active-wire='1' stroke='#7d94a8' stroke-width='" + WIRE_STROKE_WIDTH + "' stroke-linecap='round'></line>"
+    );
   }
 
   function createMiniGamePlugin() {
@@ -165,64 +150,42 @@
       id: "wires",
       title: "Connect Wires",
       initialWeight: 1,
-      timing: {
-        roundMs: 14000
-      },
+      timing: { roundMs: 14000 },
       mount: function (mount, engine) {
         var api = engine || {};
-        var complete = typeof api.complete === "function"
-          ? api.complete
-          : function () {};
-        var noteInteraction = typeof api.noteInteraction === "function"
-          ? api.noteInteraction
-          : function () {};
-        var registerControl = typeof api.registerControl === "function"
-          ? api.registerControl
-          : function () {};
+        var complete = typeof api.complete === "function" ? api.complete : NOOP;
+        var noteInteraction = typeof api.noteInteraction === "function" ? api.noteInteraction : NOOP;
+        var registerControl = typeof api.registerControl === "function" ? api.registerControl : NOOP;
 
         var wireToSocket = createDisconnectedLinks();
         var socketToWire = createDisconnectedLinks();
         var done = false;
         var invalidTimer = 0;
-        var drag = {
-          active: false,
-          pointerId: -1,
-          wireIndex: -1,
-          x: 0,
-          y: 0
-        };
+        var drag = { active: false, pointerId: -1, wireIndex: -1, x: 0, y: 0 };
 
         mount.innerHTML =
           "<div class='wires-game'>" +
           "<div class='chip mini-instruction wires-chip'>Match each wire to its color socket</div>" +
           "<div class='wires-stage'>" +
-          "<div class='wires-meter'>" +
-          createMeterMarkup() +
-          "</div>" +
+          "<div class='wires-meter'>" + createMeterMarkup() + "</div>" +
           "<div class='wires-panel'>" +
-          "<svg class='wires-canvas' aria-hidden='true'>" +
-          createLineMarkup() +
-          "</svg>" +
-          "<div class='wires-side wires-left'>" +
-          createWireMarkup() +
-          "</div>" +
-          "<div class='wires-side wires-right'>" +
-          createSocketMarkup(SOCKET_EXPECTED_WIRE) +
-          "</div>" +
+          "<svg class='wires-canvas' aria-hidden='true'>" + createLineMarkup() + "</svg>" +
+          "<div class='wires-side wires-left'>" + createWireMarkup() + "</div>" +
+          "<div class='wires-side wires-right'>" + createSocketMarkup(SOCKET_EXPECTED_WIRE) + "</div>" +
           "</div>" +
           "</div>" +
           "</div>";
 
         var panel = mount.querySelector(".wires-panel");
         var hintNode = mount.querySelector(".wires-chip");
-        var wires = Array.prototype.slice.call(mount.querySelectorAll(".wires-start"));
-        var sockets = Array.prototype.slice.call(mount.querySelectorAll(".wires-socket"));
-        var meterSegments = Array.prototype.slice.call(mount.querySelectorAll(".wires-meter-segment"));
-        var lineNodes = [];
-        var i = 0;
-        for (i = 0; i < WIRE_COUNT; i += 1) {
-          lineNodes.push(mount.querySelector("[data-wire-line='" + i + "']"));
-        }
+        var wires = mount.querySelectorAll(".wires-start");
+        var sockets = mount.querySelectorAll(".wires-socket");
+        var meterSegments = mount.querySelectorAll(".wires-meter-segment");
+        var lineNodes = [
+          mount.querySelector("[data-wire-line='0']"),
+          mount.querySelector("[data-wire-line='1']"),
+          mount.querySelector("[data-wire-line='2']")
+        ];
         var activeLine = mount.querySelector("[data-active-wire='1']");
 
         registerControl(panel);
@@ -244,14 +207,6 @@
           }, 240);
         }
 
-        function toPanelPoint(clientX, clientY) {
-          var rect = panel.getBoundingClientRect();
-          return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
-          };
-        }
-
         function centerPointFor(node, panelRect) {
           var nodeRect = node.getBoundingClientRect();
           return {
@@ -261,9 +216,6 @@
         }
 
         function setLine(node, fromPoint, toPoint, visible, stroke) {
-          if (!node || !fromPoint || !toPoint) {
-            return;
-          }
           node.setAttribute("x1", fromPoint.x.toFixed(2));
           node.setAttribute("y1", fromPoint.y.toFixed(2));
           node.setAttribute("x2", toPoint.x.toFixed(2));
@@ -276,14 +228,13 @@
 
         function findSocketAtPoint(clientX, clientY) {
           var socketIndex = 0;
-          for (socketIndex = 0; socketIndex < sockets.length; socketIndex += 1) {
+          for (socketIndex = 0; socketIndex < WIRE_COUNT; socketIndex += 1) {
             var rect = sockets[socketIndex].getBoundingClientRect();
-            var padding = 18;
             if (
-              clientX >= rect.left - padding &&
-              clientX <= rect.right + padding &&
-              clientY >= rect.top - padding &&
-              clientY <= rect.bottom + padding
+              clientX >= rect.left - 18 &&
+              clientX <= rect.right + 18 &&
+              clientY >= rect.top - 18 &&
+              clientY <= rect.bottom + 18
             ) {
               return socketIndex;
             }
@@ -291,15 +242,8 @@
           return -1;
         }
 
-        function renderHint(connectedCount) {
-          if (!hintNode) {
-            return;
-          }
-          if (connectedCount >= WIRE_COUNT) {
-            hintNode.textContent = "Power restored!";
-          } else {
-            hintNode.textContent = "Match each wire to its color socket";
-          }
+        function renderHint() {
+          hintNode.textContent = "Match each wire to its color socket";
         }
 
         function renderLines() {
@@ -308,20 +252,15 @@
           for (wireIndex = 0; wireIndex < WIRE_COUNT; wireIndex += 1) {
             var socketIndex = wireToSocket[wireIndex];
             if (socketIndex < 0 || socketIndex >= WIRE_COUNT) {
+              setLine(lineNodes[wireIndex], { x: 0, y: 0 }, { x: 0, y: 0 }, false);
+            } else {
               setLine(
                 lineNodes[wireIndex],
-                { x: 0, y: 0 },
-                { x: 0, y: 0 },
-                false
+                centerPointFor(wires[wireIndex], panelRect),
+                centerPointFor(sockets[socketIndex], panelRect),
+                true
               );
-              continue;
             }
-            setLine(
-              lineNodes[wireIndex],
-              centerPointFor(wires[wireIndex], panelRect),
-              centerPointFor(sockets[socketIndex], panelRect),
-              true
-            );
           }
 
           if (drag.active && drag.wireIndex >= 0 && drag.wireIndex < WIRE_COUNT) {
@@ -339,20 +278,17 @@
 
         function renderState() {
           var connectedCount = countConnectedWires(wireToSocket);
-          wires.forEach(function (wireNode, wireIndex) {
-            wireNode.classList.toggle("is-connected", wireToSocket[wireIndex] >= 0);
-          });
-          sockets.forEach(function (socketNode, socketIndex) {
-            socketNode.classList.toggle("is-filled", socketToWire[socketIndex] >= 0);
-          });
-          meterSegments.forEach(function (segment, index) {
-            segment.classList.toggle("is-on", index < connectedCount);
-          });
-          renderHint(connectedCount);
+          var i = 0;
+          for (i = 0; i < WIRE_COUNT; i += 1) {
+            wires[i].classList.toggle("is-connected", wireToSocket[i] >= 0);
+            sockets[i].classList.toggle("is-filled", socketToWire[i] >= 0);
+            meterSegments[i].classList.toggle("is-on", i < connectedCount);
+          }
+          renderHint();
           renderLines();
         }
 
-        function stopActiveDrag() {
+        function stopDrag() {
           drag.active = false;
           drag.pointerId = -1;
           drag.wireIndex = -1;
@@ -373,15 +309,12 @@
           drag.active = true;
           drag.pointerId = evt.pointerId;
           drag.wireIndex = wireIndex;
-          var local = toPanelPoint(evt.clientX, evt.clientY);
-          drag.x = local.x;
-          drag.y = local.y;
-          if (typeof evt.currentTarget.setPointerCapture === "function") {
-            try {
-              evt.currentTarget.setPointerCapture(evt.pointerId);
-            } catch (err) {
-              // Ignore pointer-capture failures.
-            }
+          var rect = panel.getBoundingClientRect();
+          drag.x = evt.clientX - rect.left;
+          drag.y = evt.clientY - rect.top;
+
+          if (evt.currentTarget.setPointerCapture) {
+            evt.currentTarget.setPointerCapture(evt.pointerId);
           }
           renderLines();
         }
@@ -396,18 +329,10 @@
             return;
           }
           evt.stopPropagation();
-          var local = toPanelPoint(evt.clientX, evt.clientY);
-          drag.x = local.x;
-          drag.y = local.y;
+          var rect = panel.getBoundingClientRect();
+          drag.x = evt.clientX - rect.left;
+          drag.y = evt.clientY - rect.top;
           renderLines();
-        }
-
-        function onPanelPointerUp(evt) {
-          finishDrag(evt, false);
-        }
-
-        function onPanelPointerCancel(evt) {
-          finishDrag(evt, true);
         }
 
         function finishDrag(evt, cancelled) {
@@ -415,9 +340,10 @@
             return;
           }
           evt.stopPropagation();
+
           var draggedWire = drag.wireIndex;
           var targetSocket = cancelled ? -1 : findSocketAtPoint(evt.clientX, evt.clientY);
-          stopActiveDrag();
+          stopDrag();
 
           if (done || cancelled) {
             renderLines();
@@ -437,17 +363,24 @@
           if (next.didConnect) {
             clearInvalidPulse();
             renderState();
-            if (!done && next.completed) {
+            if (next.completed) {
               done = true;
               window.setTimeout(function () {
                 complete();
               }, 120);
             }
-            return;
+          } else {
+            pulseInvalidFeedback();
+            renderState();
           }
+        }
 
-          pulseInvalidFeedback();
-          renderState();
+        function onPanelPointerUp(evt) {
+          finishDrag(evt, false);
+        }
+
+        function onPanelPointerCancel(evt) {
+          finishDrag(evt, true);
         }
 
         function onResize() {
@@ -486,12 +419,9 @@
   var api = {
     WIRE_COUNT: WIRE_COUNT,
     WIRE_DEFS: WIRE_DEFS.map(function (wire) {
-      return {
-        key: wire.key,
-        label: wire.label,
-        color: wire.color
-      };
+      return { key: wire.key, label: wire.label, color: wire.color };
     }),
+    WIRE_STROKE_WIDTH: WIRE_STROKE_WIDTH,
     SOCKET_EXPECTED_WIRE: SOCKET_EXPECTED_WIRE.slice(),
     createDisconnectedLinks: createDisconnectedLinks,
     countConnectedWires: countConnectedWires,
