@@ -23,7 +23,6 @@ function normalizeGamePlugin(plugin, defaults) {
     id: plugin.id || defaults.id,
     title: plugin.title || defaults.title,
     initialWeight: Number(plugin.initialWeight) || Number(defaults.initialWeight) || 1,
-    rarity: plugin.rarity || defaults.rarity,
     timing: plugin.timing || { roundMs: 7000, engagedRoundMs: 25000 },
     mount: typeof plugin.mount === "function" ? plugin.mount : function () {}
   };
@@ -40,7 +39,7 @@ function loadMiniGames() {
         }
       },
       BurgerMiniGame: { createMiniGamePlugin: () => createPlugin("burger", "Burger Flipping") },
-      ConnectWiresMiniGame: { createMiniGamePlugin: () => createPlugin("wires", "Connect Wires") }
+      LetterFillingMiniGame: { createMiniGamePlugin: () => createPlugin("letterfill", "Letter Filling") }
     },
     module: { exports: {} },
     exports: {}
@@ -55,7 +54,7 @@ test("registry includes all wired game modules", () => {
   const ids = games.map((game) => game.id);
 
   assert.equal(ids.includes("burger"), true);
-  assert.equal(ids.includes("wires"), true);
+  assert.equal(ids.includes("letterfill"), true);
   assert.equal(ids.includes("pipe"), false);
   assert.equal(ids.includes("dinosaur"), false);
 });

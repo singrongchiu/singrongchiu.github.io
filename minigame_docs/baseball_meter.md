@@ -1,10 +1,5 @@
 Baseball Meter Swing:
 
-Rarity:
-- Tier: Elite
-- Color: `#d48732`
-- Bounty: `3`
-
 Scene & Objects:
 - Display a side-view baseball field with exactly 1 batter at home plate.
 - Display exactly 1 incoming baseball pitched from the mound each round.

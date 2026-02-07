@@ -1,10 +1,5 @@
 Burger Flipping:
 
-Rarity:
-- Tier: Uncommon
-- Color: `#3f7fd6`
-- Bounty: `2`
-
 Scene & Objects:
 - Display a grill containing exactly 3 burger patties.
 - Each patty has two states: Unflipped (starting state) and Flipped.

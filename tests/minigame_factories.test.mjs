@@ -9,11 +9,7 @@ const modules = [
   require("../src/minigame-burger.js"),
   require("../src/minigame-vanishing.js"),
   require("../src/minigame-plant.js"),
-  require("../src/minigame-slingshot.js"),
-  require("../src/minigame-maze.js"),
-  require("../src/minigame-harvest.js"),
   require("../src/minigame-eightball.js"),
-  require("../src/minigame-wires.js"),
   require("../src/minigame-letterfill.js")
 ];
 
@@ -46,13 +42,13 @@ test("plugin factories return unique ids with normalized shape", () => {
   }
 });
 
-test("custom timing overrides are preserved for long-round games", () => {
+test("custom timing overrides are preserved for configured games", () => {
   const plugins = modules.map((mod) => normalizeGamePlugin(mod.createMiniGamePlugin(), {}));
   const plant = plugins.find((plugin) => plugin.id === "plant");
-  const harvest = plugins.find((plugin) => plugin.id === "harvest");
+  const eightball = plugins.find((plugin) => plugin.id === "eightball");
 
   assert.ok(plant, "Expected plant plugin to exist");
-  assert.ok(harvest, "Expected harvest plugin to exist");
+  assert.ok(eightball, "Expected eightball plugin to exist");
   assert.equal(plant.timing.roundMs, 15000);
-  assert.equal(harvest.timing.roundMs, 18000);
+  assert.equal(eightball.timing.roundMs, 12000);
 });

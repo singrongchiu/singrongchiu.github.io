@@ -1,10 +1,5 @@
 Vanishing Path:
 
-Rarity:
-- Tier: Elite
-- Color: `#d48732`
-- Bounty: `3`
-
 Scene & Objects:
 - Display a 4x4 grid of stone tiles floating in a void.
 - Display a single Avatar starting on a random tile (Start).

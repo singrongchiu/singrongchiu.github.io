@@ -1,10 +1,5 @@
 Lightbulb Screwing:
 
-Rarity:
-- Tier: Uncommon
-- Color: `#3f7fd6`
-- Bounty: `2`
-
 Scene & Objects:
 - Display a lamp with exactly 1 empty socket (no bulb installed).
 - Display exactly 1 lightbulb aligned above the socket.

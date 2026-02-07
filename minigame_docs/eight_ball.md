@@ -1,10 +1,5 @@
 8-Ball One-Shot Mini-Game:
 
-Rarity:
-- Tier: Legendary
-- Color: `#b8812a`
-- Bounty: `4`
-
 Scene & Objects:
 - Display a small top-down pool table with exactly 2 balls: 1 cue ball and 1 black 8-ball.
 - Display exactly 1 target pocket highlighted (for example, the top-right corner pocket).

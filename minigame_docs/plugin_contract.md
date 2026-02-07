@@ -7,11 +7,6 @@ All mini-games must expose a `createMiniGamePlugin()` factory and return a plugi
   id: string,
   title: string,
   initialWeight: number,
-  rarity: {
-    label: "Uncommon" | "Elite" | "Legendary",
-    color: string, // hex color
-    bounty: number // 2-4
-  },
   timing: {
     roundMs: number,
     engagedRoundMs: number
@@ -29,18 +24,14 @@ All mini-games must expose a `createMiniGamePlugin()` factory and return a plugi
 
 ## Optional Fields
 - `initialWeight`: Initial selection weight. Defaults to `1`.
-- `rarity`: Rarity metadata used for score payout and card badge.
-  - `label`: `Uncommon | Elite | Legendary` (defaults to `Uncommon`)
-  - `color`: Badge color for the rarity (defaults to the tier color)
-  - `bounty`: Score added on success (defaults by tier: 2/3/4)
 - `timing.roundMs`: Per-round timeout for this game. Defaults to framework round duration.
 - `timing.engagedRoundMs`: Extended timeout after engagement. Defaults to framework engaged duration.
 
 ## Engine API (Inside `mount`)
 - `engine.complete()`
-  Marks the mini-game as successful and awards that game's rarity bounty. This call is idempotent: only the first call in a round is honored.
+  Marks the mini-game as successful and awards `+1` score. This call is idempotent: only the first call in a round is honored.
 - `engine.fail(reason)`
-  Ends the mini-game without awarding points.
+  Ends the mini-game without awarding points (`+0`).
 - `engine.noteInteraction()`
   Signals meaningful interaction (for example keyboard input) so the framework can extend round time.
 - `engine.registerControl(element, { allowSwipeSkip })`

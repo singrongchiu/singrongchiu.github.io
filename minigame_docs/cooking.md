@@ -2,11 +2,6 @@
 
 The cooking mini-game presents one recipe per round.
 
-## Rarity
-- Tier: Uncommon
-- Color: `#3f7fd6`
-- Bounty: `2`
-
 ## Recipe Rules
 - There are exactly **3 total recipes** in the game.
 - Each recipe has exactly **2 required ingredients**.

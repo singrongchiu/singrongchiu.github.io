@@ -141,7 +141,6 @@ test("normalizeGamePlugin applies defaults and normalizes timing", () => {
     {
       title: "Demo Title",
       initialWeight: 2,
-      rarity: { label: "Elite", color: "#d48732", bounty: 3 },
       timing: { roundMs: 6000, engagedRoundMs: 12000 }
     }
   );
@@ -151,40 +150,7 @@ test("normalizeGamePlugin applies defaults and normalizes timing", () => {
   assert.equal(plugin.initialWeight, 2);
   assert.equal(plugin.timing.roundMs, 6000);
   assert.equal(plugin.timing.engagedRoundMs, 12000);
-  assert.equal(plugin.rarity.label, "Elite");
-  assert.equal(plugin.rarity.color, "#d48732");
-  assert.equal(plugin.rarity.bounty, 3);
   assert.equal(typeof plugin.mount, "function");
-});
-
-test("normalizeGamePlugin canonicalizes rarity tiers and uses preset bounty defaults", () => {
-  const plugin = normalizeGamePlugin(
-    {
-      id: "rarity-check",
-      rarity: { tier: "legendary" },
-      mount() {}
-    },
-    {}
-  );
-
-  assert.equal(plugin.rarity.label, "Legendary");
-  assert.equal(plugin.rarity.color, "#b8812a");
-  assert.equal(plugin.rarity.bounty, 4);
-});
-
-test("normalizeGamePlugin maps legacy common rarity to uncommon defaults", () => {
-  const plugin = normalizeGamePlugin(
-    {
-      id: "legacy-common",
-      rarity: { label: "Common" },
-      mount() {}
-    },
-    {}
-  );
-
-  assert.equal(plugin.rarity.label, "Uncommon");
-  assert.equal(plugin.rarity.color, "#3f7fd6");
-  assert.equal(plugin.rarity.bounty, 2);
 });
 
 test("normalizeGamePlugin rejects invalid plugin shapes", () => {
@@ -206,6 +172,4 @@ test("createFallbackPlugin returns a valid mountable plugin", () => {
   assert.equal(typeof plugin.mount, "function");
   assert.equal(plugin.timing.roundMs > 0, true);
   assert.equal(plugin.timing.engagedRoundMs >= plugin.timing.roundMs, true);
-  assert.equal(plugin.rarity.label, "Uncommon");
-  assert.equal(plugin.rarity.bounty, 2);
 });

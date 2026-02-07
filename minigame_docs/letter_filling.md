@@ -1,10 +1,5 @@
 Letter Filling (APPLOVIN):
 
-Rarity:
-- Tier: Uncommon
-- Color: `#3f7fd6`
-- Bounty: `2`
-
 Scene & Objects:
 - Display the brand word as exactly 8 character slots in one horizontal row, with a visible grouping gap between `APP` and `LOVIN`.
 - At the start of each round, choose exactly 2 arbitrary slot positions to hide (any 2 of the 8 positions).

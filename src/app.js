@@ -366,29 +366,8 @@
     }, duration);
   }
 
-  function getPluginRarity(plugin) {
-    var rarity = plugin && plugin.rarity && typeof plugin.rarity === "object"
-      ? plugin.rarity
-      : {};
-    var label = String(rarity.label || "Uncommon").trim() || "Uncommon";
-    var color = String(rarity.color || "#3f7fd6").trim() || "#3f7fd6";
-    var bounty = Number(rarity.bounty);
-    if (!Number.isFinite(bounty) || bounty <= 0) {
-      bounty = 2;
-    }
-    return {
-      label: label,
-      color: color,
-      bounty: Math.max(2, Math.round(bounty))
-    };
-  }
-
-  function showCorrect(rarity, ms) {
-    var badge = rarity && rarity.label ? String(rarity.label) : "Uncommon";
-    var bounty = rarity && Number.isFinite(rarity.bounty)
-      ? Math.max(2, Math.round(rarity.bounty))
-      : 2;
-    showToast("WIN +" + String(bounty) + " (" + badge + ")", ms, "win");
+  function showCorrect(ms) {
+    showToast("WIN +1", ms, "win");
   }
 
   function burstConfetti(ms) {
@@ -443,7 +422,7 @@
     return remaining;
   }
 
-  function showRoundResult(kind, reason, rarity) {
+  function showRoundResult(kind, reason) {
     if (!state.running || !state.current || state.roundDone) {
       return;
     }
@@ -451,7 +430,7 @@
     window.clearTimeout(state.roundTimer);
     var remaining = pauseSessionClock();
     if (kind === "win") {
-      showCorrect(rarity, RESULT_MS);
+      showCorrect(RESULT_MS);
       burstConfetti(RESULT_MS);
     } else {
       showToast(kind === "timeout" ? "TIMEOUT" : "LOSE", RESULT_MS, kind);
@@ -494,11 +473,10 @@
       complete: function () {
         settleRound(function () {
           var currentId = state.current.id;
-          var rarity = getPluginRarity(state.current);
           state.weights[currentId] = updateWeight(state.weights[currentId], "success", WEIGHT_CFG);
-          state.score += rarity.bounty;
+          state.score += 1;
           updateHud();
-          showRoundResult("win", "success", rarity);
+          showRoundResult("win", "success");
         });
       },
       fail: function () {
@@ -543,20 +521,9 @@
     clearCard();
     el.card.classList.remove("enter");
 
-    var rarity = getPluginRarity(plugin);
     var head = document.createElement("div");
     head.className = "card-head";
     head.textContent = plugin.title || "Mini-game";
-
-    var rarityChip = document.createElement("div");
-    rarityChip.className = "chip";
-    rarityChip.textContent = rarity.label + " \u2022 Bounty +" + String(rarity.bounty);
-    rarityChip.style.borderColor = rarity.color;
-    rarityChip.style.color = rarity.color;
-    rarityChip.style.background = "#fff8ec";
-    rarityChip.style.marginTop = "6px";
-    head.appendChild(document.createElement("br"));
-    head.appendChild(rarityChip);
 
     var body = document.createElement("div");
     body.className = "card-body";
@@ -885,7 +852,7 @@
   function renderStart() {
     el.status.textContent = "Tap to begin";
     el.card.innerHTML =
-      "<div class='card-head'>Farm Flick</div>" +
+      "<div class='card-head'>Flick Lovin</div>" +
       "<div class='card-body'>" +
       "<div>" +
       "<div class='placeholder-icon'>🚜</div>" +

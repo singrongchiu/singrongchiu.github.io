@@ -15,6 +15,14 @@ pytest -q
 sh compress.sh
 ```
 
+# Estimate `.tar.br` File Contribution
+```sh
+sh estimate_tar_br_breakdown.sh src.tar.br
+```
+Optional arguments:
+- Brotli quality (default `11`)
+- Brotli window (default `24`)
+
 # Run Locally
 ```sh
 sh run.sh src.tar.br
@@ -33,11 +41,6 @@ Mini-games integrate through a single plugin factory: `createMiniGamePlugin()`.
   id: "unique-game-id",
   title: "Card Title",
   initialWeight: 1,
-  rarity: {
-    label: "Uncommon", // Uncommon | Elite | Legendary
-    color: "#3f7fd6",
-    bounty: 2
-  },
   timing: {
     roundMs: 7000,
     engagedRoundMs: 25000
@@ -49,36 +52,17 @@ Mini-games integrate through a single plugin factory: `createMiniGamePlugin()`.
 ```
 
 The `engine` object available inside `mount()` provides:
-- `complete()` to mark success (+rarity bounty score, toast, confetti, transition handled by framework).
+- `complete()` to mark success (+1 score, toast, confetti, transition handled by framework).
 - `fail(reason)` to end the current round without score.
 - `noteInteraction()` to request engagement-time extension for non-pointer input.
 - `registerControl(element, { allowSwipeSkip })` to register interactive controls for swipe arbitration.
 - `effects.confetti()` and `effects.toast(text)` for optional local effects.
 - `session.getRemainingSeconds()` for time-aware behavior.
 
-# Rarity And Bounty
-
-Rarity tiers define scoring for successful clears:
-- `Uncommon` (`#3f7fd6`) -> `+2` bounty
-- `Elite` (`#d48732`) -> `+3` bounty
-- `Legendary` (`#b8812a`) -> `+4` bounty
-
-Current mini-game assignments:
-
-| Mini-game | Rarity | Color | Bounty |
-| --- | --- | --- | --- |
-| Burger Flipping | Uncommon | `#3f7fd6` | 2 |
-| Lamp Twist | Uncommon | `#3f7fd6` | 2 |
-| Vanishing Path | Elite | `#d48732` | 3 |
-| Plant Watering | Uncommon | `#3f7fd6` | 2 |
-| Cooking | Uncommon | `#3f7fd6` | 2 |
-| Slingshot Launch | Elite | `#d48732` | 3 |
-| Maze Runner | Elite | `#58a05a` | 3 |
-| Baseball Meter Swing | Elite | `#d48732` | 3 |
-| Harvest Catch | Uncommon | `#3f7fd6` | 2 |
-| 8-Ball One Shot | Legendary | `#b8812a` | 4 |
-| Connect Wires | Uncommon | `#3f7fd6` | 2 |
-| Letter Filling | Uncommon | `#3f7fd6` | 2 |
+# Scoring
+- Successful game clear: `+1`
+- Failed or timed out game: `+0`
+- Skipped game: `+0`
 
 # Add A New Game
 1. Create a module in `src/` that exports `createMiniGamePlugin()` and returns a plugin matching the contract above.

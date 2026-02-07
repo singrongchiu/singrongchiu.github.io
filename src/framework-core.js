@@ -13,11 +13,6 @@
     motionMinScale: 0.68,
     easePower: 1.2
   };
-  var RARITY_PRESETS = {
-    uncommon: { label: "Uncommon", color: "#3f7fd6", bounty: 2 },
-    elite: { label: "Elite", color: "#d48732", bounty: 3 },
-    legendary: { label: "Legendary", color: "#b8812a", bounty: 4 }
-  };
 
   function clamp(value, min, max) {
     var n = Number(value);
@@ -202,42 +197,6 @@
     };
   }
 
-  function rarityKey(value) {
-    var text = String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
-    if (!text) {
-      return "uncommon";
-    }
-    if (text === "common") {
-      return "uncommon";
-    }
-    if (text === "uncommon" || text === "elite" || text === "legendary") {
-      return text;
-    }
-    return "uncommon";
-  }
-
-  function normalizeRarity(input, defaults) {
-    var raw = input && typeof input === "object" ? input : {};
-    var base = defaults && typeof defaults === "object" ? defaults : {};
-    var preset = RARITY_PRESETS[rarityKey(raw.label || raw.tier || base.label || base.tier)];
-    var color = String(raw.color || base.color || preset.color).trim();
-    if (!color) {
-      color = preset.color;
-    }
-    var bounty = Number(raw.bounty);
-    if (!Number.isFinite(bounty) || bounty <= 0) {
-      bounty = Number(base.bounty);
-    }
-    if (!Number.isFinite(bounty) || bounty <= 0) {
-      bounty = preset.bounty;
-    }
-    return {
-      label: preset.label,
-      color: color,
-      bounty: Math.max(2, Math.round(bounty))
-    };
-  }
-
   function normalizeGamePlugin(input, defaults) {
     var base = defaults && typeof defaults === "object" ? defaults : {};
     var raw = input && typeof input === "object" ? input : {};
@@ -267,7 +226,6 @@
       title: title,
       initialWeight: initialWeight,
       timing: normalizePluginTiming(raw.timing, base.timing),
-      rarity: normalizeRarity(raw.rarity, base.rarity),
       mount: mount
     };
   }
@@ -287,7 +245,6 @@
         title: title,
         initialWeight: Number(cfg.initialWeight) || 1,
         timing: cfg.timing,
-        rarity: cfg.rarity,
         mount: function (mountEl) {
           mountEl.innerHTML =
             "<div>" +
@@ -300,8 +257,7 @@
       {
         id: id,
         title: title,
-        initialWeight: 1,
-        rarity: cfg.rarity
+        initialWeight: 1
       }
     );
   }

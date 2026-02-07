@@ -42,8 +42,6 @@ test("normalizeGamePlugin fills omitted optional fields", () => {
   assert.equal(plugin.initialWeight, 1);
   assert.equal(plugin.timing.roundMs, 7000);
   assert.equal(plugin.timing.engagedRoundMs, 25000);
-  assert.equal(plugin.rarity.label, "Uncommon");
-  assert.equal(plugin.rarity.bounty, 2);
 });
 
 test("normalizeGamePlugin enforces required methods", () => {
