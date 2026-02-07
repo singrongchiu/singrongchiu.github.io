@@ -8,13 +8,13 @@
   var TARGET_POCKET_KEY = "top-right";
   var SHOT_MIN_DRAG = 10;
   var SHOT_MAX_DRAG = 140;
-  var SHOT_MAX_SPEED = 1320;
+  var SHOT_MAX_SPEED = 900;
   var DRAG_START_RADIUS = 54;
   var FRICTION = 0.998;
   var STOP_SPEED = 8;
   var CUSHION_BOUNCE = 0.9;
   var BALL_BOUNCE = 0.985;
-  var EIGHTBALL_TRANSFER_BOOST = 1.75;
+  var EIGHTBALL_TRANSFER_BOOST = 1.5;
 
   function clamp(value, min, max) {
     var n = Number(value);
@@ -267,8 +267,7 @@
       title: "8-Ball One Shot",
       initialWeight: 1,
       timing: {
-        roundMs: 12000,
-        engagedRoundMs: 18000
+        roundMs: 12000
       },
       mount: function (mount, engine) {
         var api = engine || {};
@@ -540,6 +539,11 @@
           }
 
           renderBalls();
+
+          if (cuePocket) {
+            settle("scratch", "Cue ball scratched. Round failed.", 140);
+            return;
+          }
 
           if (eightPocket) {
             if (eightPocket.key === TARGET_POCKET_KEY || eightPocket.target) {
