@@ -14,20 +14,14 @@
 
   var ROUND_MS = 7000;
   var ENGAGED_ROUND_MS = 25000;
-  var ROUND_TIMEOUT_MIN_MS = 900;
-  var ENGAGED_ROUND_MIN_MS = 1500;
+  var ROUND_TIMEOUT_MIN_MS = 2800;
+  var ENGAGED_ROUND_MIN_MS = 5200;
   var ROUND_PACING_CFG = {
     timeoutMinScale: 0.56,
     motionMinScale: 0.68,
     easePower: 1.2
   };
-  var ROUND_STRESS_RAMP = {
-    timeoutStep: 0.14,
-    motionStep: 0.11,
-    timeoutMinScale: 0.16,
-    motionMinScale: 0.24
-  };
-  var SESSION_SECONDS = 105;
+  var SESSION_SECONDS = 90;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
   var SWIPE_VISUAL_START_PX = 26;
   var SWIPE_VISUAL_VERTICAL_RATIO = 1.2;
@@ -153,19 +147,8 @@
 
   function applyRoundPacing() {
     var pacing = resolveRoundPacing(getSessionProgress());
-    var roundIndex = Math.max(0, state.roundSeq - 1);
-    var roundTimeoutScale = 1 - (roundIndex * ROUND_STRESS_RAMP.timeoutStep);
-    var roundMotionScale = 1 - (roundIndex * ROUND_STRESS_RAMP.motionStep);
-    state.timeoutScale = clamp(
-      pacing.timeoutScale * roundTimeoutScale,
-      ROUND_STRESS_RAMP.timeoutMinScale,
-      1
-    );
-    state.motionScale = clamp(
-      pacing.motionScale * roundMotionScale,
-      ROUND_STRESS_RAMP.motionMinScale,
-      1
-    );
+    state.timeoutScale = pacing.timeoutScale;
+    state.motionScale = pacing.motionScale;
     document.documentElement.style.setProperty("--tempo-scale", state.motionScale.toFixed(3));
   }
 
