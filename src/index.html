@@ -8,6 +8,8 @@
     :root {
       --bg1: #f6ecd2;
       --bg2: #d7efc1;
+      --bg-warn-alpha: 0;
+      --bg-warn-alpha-soft: 0;
       --ink: #1c2a23;
       --accent: #2f8f46;
       --card: #fff7e6;
@@ -26,7 +28,18 @@
       overflow: hidden;
       font-family: "Trebuchet MS", "Segoe UI", sans-serif;
       color: var(--ink);
-      background: radial-gradient(circle at 20% 0%, #fff8df 0%, var(--bg1) 40%, var(--bg2) 100%);
+      background:
+        radial-gradient(
+          circle at 82% 14%,
+          rgba(255, 66, 66, var(--bg-warn-alpha)) 0%,
+          rgba(255, 66, 66, 0) 54%
+        ),
+        radial-gradient(
+          circle at 16% 84%,
+          rgba(255, 128, 128, var(--bg-warn-alpha-soft)) 0%,
+          rgba(255, 128, 128, 0) 48%
+        ),
+        radial-gradient(circle at 20% 0%, #fff8df 0%, var(--bg1) 40%, var(--bg2) 100%);
     }
     .app {
       position: relative;

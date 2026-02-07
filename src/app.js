@@ -11,6 +11,10 @@
   var ROUND_MS = 7000;
   var SESSION_SECONDS = 90;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
+  var BG_START_1 = [215, 239, 193];
+  var BG_END_1 = [255, 132, 138];
+  var BG_START_2 = [183, 223, 157];
+  var BG_END_2 = [235, 76, 90];
 
   var el = {
     timer: document.getElementById("timer"),
@@ -65,10 +69,39 @@
     el.score.textContent = String(state.score);
     if (!state.clock) {
       el.timer.textContent = String(SESSION_SECONDS);
+      updateBackgroundTone();
       return;
     }
     var remaining = state.clock.getRemaining();
     el.timer.textContent = String(Math.max(0, Math.ceil(remaining)));
+    updateBackgroundTone();
+  }
+
+  function channelHex(value) {
+    var clamped = clamp(Math.round(value), 0, 255);
+    var hex = clamped.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  }
+
+  function mixHex(startRgb, endRgb, amount) {
+    var t = clamp(amount, 0, 1);
+    var r = startRgb[0] + ((endRgb[0] - startRgb[0]) * t);
+    var g = startRgb[1] + ((endRgb[1] - startRgb[1]) * t);
+    var b = startRgb[2] + ((endRgb[2] - startRgb[2]) * t);
+    return "#" + channelHex(r) + channelHex(g) + channelHex(b);
+  }
+
+  function updateBackgroundTone() {
+    var root = document.documentElement;
+    var elapsed = 0;
+    if (state.clock) {
+      elapsed = clamp(1 - (state.clock.getRemaining() / SESSION_SECONDS), 0, 1);
+    }
+    var warm = elapsed * elapsed * elapsed;
+    root.style.setProperty("--bg1", mixHex(BG_START_1, BG_END_1, elapsed * 0.82));
+    root.style.setProperty("--bg2", mixHex(BG_START_2, BG_END_2, elapsed));
+    root.style.setProperty("--bg-warn-alpha", (warm * 0.96).toFixed(3));
+    root.style.setProperty("--bg-warn-alpha-soft", (warm * 0.62).toFixed(3));
   }
 
   function clearCard() {
@@ -310,7 +343,7 @@
       "<div class='card-body'>" +
       "<div>" +
       "<div class='placeholder-icon'>🚜</div>" +
-      "<div class='hint'>Framework shell is ready.<br>Tap start, then swipe up to skip cards.</div>" +
+      "<div class='hint'>Tap start, clear mini-games, and swipe up to skip cards.</div>" +
       "<div class='chip'>90-second session</div>" +
       "</div>" +
       "</div>" +
