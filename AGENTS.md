@@ -45,4 +45,4 @@ minigame_docs/ — minigame specifications
 ## 4) Architecture (30-second overview)
 src/ should contain all necessary files to run the game
 tests/ should be where unit tests for specific games should go
-minigames/ is where the documentation for the mini-games implemented in src/ should go
+minigame_docs/ is where the documentation for the mini-games implemented in src/ should go

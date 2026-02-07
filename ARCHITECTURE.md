@@ -11,8 +11,8 @@ Build a fully playable, self-contained mobile browser game (offline) with a tota
 4) Learnability: Within 1–2 minutes, a player should infer how to interact and start playing without any external verbal instructions from the assistant. Use visual affordances (icons, arrows, animated hand cues, highlighting) instead of long text.
 5) Session length: The entire experience ends after 90 seconds (hard stop). After time ends, show the final score and a clear “restart” affordance.
 6) Scoring: Each mini-game contributes exactly 1 point if completed successfully; 0 otherwise. Total score is the sum across mini-games encountered during the 90 seconds.
-7) Skip mechanic: The player can always swipe down to skip the current mini-game and advance immediately to the next one.
-8) Feedback: On success, show a green “Correct!” popup above the game card AND show a brief confetti effect. Also include a large, obvious indicator that suggests swiping down to continue/skip.
+7) Skip mechanic: The player can always swipe up to skip the current mini-game and advance immediately to the next one.
+8) Feedback: On success, show a green “Correct!” popup above the game card AND show a brief confetti effect. Also include a large, obvious indicator that suggests swiping up to continue/skip.
 
 # REPO / TOOLING REQUIREMENTS (MUST)
 A compression script exists at `@compress.sh` and a run script at `@run.sh`.
@@ -40,11 +40,11 @@ Keep shared utilities (gesture handling, confetti, timers, weighted selection, D
 The game runs for 90 seconds total from the first interaction.
 Each mini-game lasts a short window (e.g., 5–10 seconds) or ends earlier upon success/skip.
 After each mini-game ends (success/fail/timeout), show a brief transition and load the next.
-Swiping down at any time skips to the next mini-game.
+Swiping up at any time skips to the next mini-game.
 
 # ADAPTIVE SELECTION ALGORITHM (MUST)
 Maintain a weight for each mini-game.
-If the user swipes down to skip a mini-game, downweight that mini-game (make it less likely to appear).
+If the user swipes up to skip a mini-game, downweight that mini-game (make it less likely to appear).
 If the user completes a mini-game successfully, upweight that mini-game (make it more likely to appear).
 The selection method should be simple and size-efficient (e.g., multiplicative weight update + weighted random pick with clamping).
 Ensure variety: avoid repeating the same mini-game back-to-back unless the pool is tiny.
@@ -55,7 +55,7 @@ Green “Correct!” popup above the card (brief, then fade).
 Confetti burst (very lightweight—DOM particles or tiny canvas; keep code minimal).
 
 ## Skip indicator:
-Always show an obvious down-swipe cue near the bottom (e.g., animated chevrons “↓↓↓”, a bouncing arrow, or a hand+arrow icon).
+Always show an obvious up-swipe cue near the bottom (e.g., animated chevrons “↓↓↓”, a bouncing arrow, or a hand+arrow icon).
 No heavy text tutorials. Prefer:
 - Animated hand icon demonstration on mini-game start
 - Pulsing outlines around target objects

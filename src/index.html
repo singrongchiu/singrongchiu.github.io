@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Farm Flick Framework</title>
+  <style>
+    :root {
+      --bg1: #f6ecd2;
+      --bg2: #d7efc1;
+      --ink: #1c2a23;
+      --accent: #2f8f46;
+      --card: #fff7e6;
+      --card-line: #6f7f56;
+      --danger: #e95f5f;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 20% 0%, #fff8df 0%, var(--bg1) 40%, var(--bg2) 100%);
+    }
+    .app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 12px 12px 16px;
+      gap: 8px;
+    }
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .pill {
+      border: 2px solid var(--card-line);
+      background: #fffef5;
+      border-radius: 14px;
+      padding: 10px 12px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12);
+    }
+    .status {
+      text-align: center;
+      font-size: 14px;
+      min-height: 18px;
+      font-weight: 700;
+    }
+    .card-wrap {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 0;
+    }
+    .card {
+      width: min(92vw, 500px);
+      height: min(68vh, 540px);
+      min-height: 360px;
+      border: 3px solid var(--card-line);
+      background: linear-gradient(#fffaf0, var(--card));
+      border-radius: 20px;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.14);
+      padding: 16px 14px 14px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      user-select: none;
+    }
+    .card.enter {
+      animation: cardIn .2s ease-out;
+    }
+    @keyframes cardIn {
+      from { transform: translateY(12px); opacity: .7; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .card-head {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+    .card-body {
+      border: 2px dashed #93a477;
+      border-radius: 14px;
+      background: #fdf8e7;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 14px;
+    }
+    .placeholder-icon {
+      font-size: 64px;
+      line-height: 1;
+      margin-bottom: 6px;
+      animation: bob 1s ease-in-out infinite alternate;
+    }
+    @keyframes bob {
+      from { transform: translateY(0); }
+      to { transform: translateY(-7px); }
+    }
+    .hint {
+      font-size: 15px;
+      line-height: 1.3;
+      font-weight: 700;
+      max-width: 22ch;
+    }
+    .chip {
+      margin-top: 8px;
+      font-size: 12px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid #64824f;
+      background: #ecf6dd;
+      display: inline-block;
+    }
+    .btn {
+      border: 2px solid #2f5f39;
+      background: linear-gradient(#60b86c, #3b944d);
+      color: #fff;
+      border-radius: 999px;
+      font-size: 20px;
+      font-weight: 900;
+      padding: 12px 22px;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
+    }
+    .btn:active {
+      transform: translateY(1px);
+    }
+    .swipe-cue {
+      align-self: end;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .6px;
+      color: #2f5f39;
+      animation: cue 1s infinite ease-in-out;
+    }
+    @keyframes cue {
+      0%, 100% { transform: translateY(0); opacity: .75; }
+      50% { transform: translateY(-7px); opacity: 1; }
+    }
+    .toast {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      background: #1f9d45;
+      border: 2px solid #0b6829;
+      border-radius: 10px;
+      font-weight: 900;
+      padding: 8px 12px;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+      animation: toastIn .7s ease forwards;
+      pointer-events: none;
+    }
+    @keyframes toastIn {
+      0% { opacity: 0; transform: translate(-50%, 8px); }
+      20% { opacity: 1; transform: translate(-50%, 0); }
+      80% { opacity: 1; transform: translate(-50%, -2px); }
+      100% { opacity: 0; transform: translate(-50%, -10px); }
+    }
+    .confetti-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 12px;
+      border-radius: 2px;
+      animation: pop .7s ease-out forwards;
+    }
+    @keyframes pop {
+      from { opacity: 1; transform: translate(var(--x), var(--y)) rotate(0deg); }
+      to { opacity: 0; transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) + var(--dy))) rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hud">
+      <div class="pill">Time: <span id="timer">90</span>s</div>
+      <div class="pill">Score: <span id="score">0</span></div>
+    </section>
+    <div class="status" id="status">Tap to begin</div>
+    <section class="card-wrap">
+      <div id="card" class="card"></div>
+      <div id="feedback"></div>
+      <div id="confetti" class="confetti-layer"></div>
+    </section>
+    <div class="swipe-cue">^^^ SWIPE UP TO SKIP ^^^</div>
+  </main>
+  <script src="./framework-core.js"></script>
+  <script src="./minigames.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
