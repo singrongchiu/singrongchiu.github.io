@@ -2,7 +2,7 @@
   "use strict";
 
   var GRID_SIZE = 4;
-  var MEMORIZE_MS = 1500;
+  var MEMORIZE_MS = 750;
   var PIT_FLASH_MS = 260;
   var MIN_START_GOAL_DISTANCE = 3;
 
