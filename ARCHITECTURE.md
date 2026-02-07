@@ -37,7 +37,7 @@ Use a common interface pattern.
 Keep shared utilities (gesture handling, confetti, timers, weighted selection, DOM helpers) separate from each mini-game logic.
 
 # GAME FLOW (MUST)
-The game runs for 60 seconds total from the first interaction (or immediately on load—pick one and be consistent).
+The game runs for 90 seconds total from the first interaction.
 Each mini-game lasts a short window (e.g., 5–10 seconds) or ends earlier upon success/skip.
 After each mini-game ends (success/fail/timeout), show a brief transition and load the next.
 Swiping down at any time skips to the next mini-game.
@@ -57,9 +57,9 @@ Confetti burst (very lightweight—DOM particles or tiny canvas; keep code minim
 ## Skip indicator:
 Always show an obvious down-swipe cue near the bottom (e.g., animated chevrons “↓↓↓”, a bouncing arrow, or a hand+arrow icon).
 No heavy text tutorials. Prefer:
-- Animated hand icon demonstration on mini-game start,
-- Pulsing outlines around target objects,
-- Directional arrows indicating drag/swipe.
+- Animated hand icon demonstration on mini-game start
+- Pulsing outlines around target objects
+- Directional arrows indicating drag/swipe
 Audio is optional; if included, must be generated locally (WebAudio) and extremely small.
 
 # IMPLEMENTATION / BUNDLE STRATEGY (SHOULD)
@@ -100,3 +100,4 @@ Keep each one discoverable via visuals only.
 
 # IMPORTANT
 Do not output long explanations. Focus on implementation and meeting constraints. Validate with the provided scripts and report the measured size.
+As long as one of the compressed files is < 15KB, it is OK.
