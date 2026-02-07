@@ -21,11 +21,12 @@ sh run.sh src.tar.br
 ```
 Open [http://localhost:8000/src/index.html](http://localhost:8000/src/index.html).
 
-# Framework-Only Scope
-This repository currently implements the main game framework only:
+# Current Scope
+This repository currently implements the main game framework plus one playable mini-game:
 - 90-second playable session shell
 - timer/score HUD
 - swipe-up skip gesture handling
 - adaptive mini-game weighting infrastructure
 - success popup + confetti feedback hooks
-- placeholder mini-game cards only (no actual mini-game mechanics)
+- playable lightbulb screwing mini-game
+- placeholder cards for burger/pipe/plant slots

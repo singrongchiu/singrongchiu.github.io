@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  var lightbulbApi = window.LightbulbMiniGame || null;
+
   function makePlaceholder(game) {
     return {
       id: game.id,
@@ -18,17 +20,32 @@
     };
   }
 
-  var placeholders = [
+  function buildGame(game) {
+    if (
+      game.id === "bulb" &&
+      lightbulbApi &&
+      typeof lightbulbApi.createLightbulbGame === "function"
+    ) {
+      try {
+        return lightbulbApi.createLightbulbGame();
+      } catch (err) {
+        return makePlaceholder(game);
+      }
+    }
+    return makePlaceholder(game);
+  }
+
+  var miniGames = [
     { id: "burger", label: "Burger Station", weight: 1, icon: "🍔", hint: "Burger mini-game slot" },
     { id: "bulb", label: "Lamp Twist", weight: 1, icon: "💡", hint: "Lightbulb mini-game slot" },
     { id: "pipe", label: "Pipe Grid", weight: 1, icon: "🧩", hint: "Pipe mini-game slot" },
     { id: "plant", label: "Plant Care", weight: 1, icon: "🌱", hint: "Plant mini-game slot" }
-  ].map(makePlaceholder);
+  ].map(buildGame);
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = placeholders;
+    module.exports = miniGames;
   }
   if (typeof window !== "undefined") {
-    window.MiniGames = placeholders;
+    window.MiniGames = miniGames;
   }
 }());
