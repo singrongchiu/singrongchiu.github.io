@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "games": [
+    {
+      "id": "vanish",
+      "label": "vanish",
+      "weight": 1.0,
+      "enabled": true,
+      "scriptUrl": "https://d34anrzmbcnfx3.cloudfront.net/games/vanish/minigame-vanishing.cloud.js"
+    }
+  ]
+}

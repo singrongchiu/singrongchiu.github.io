@@ -307,6 +307,17 @@
     createVanishingPathGame: createVanishingPathGame
   };
 
+  if (typeof window !== "undefined" && typeof window.registerCloudMiniGame === "function") {
+    window.registerCloudMiniGame(function () {
+      var game = api.createVanishingPathGame();
+      game.id = "vanish-cloud";
+      game.label = "Vanishing Path";
+      game.weight = 1;
+      game.playable = true;
+      return game;
+    });
+  }
+
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   }
