@@ -188,6 +188,9 @@
         var complete = typeof api.complete === "function"
           ? api.complete
           : function () {};
+        var fail = typeof api.fail === "function"
+          ? api.fail
+          : function () {};
         var noteInteraction = typeof api.noteInteraction === "function"
           ? api.noteInteraction
           : function () {};
@@ -414,6 +417,9 @@
         }
 
         function onMiss() {
+          if (done) {
+            return;
+          }
           stopFlight();
           if (hasLaunchesRemaining()) {
             stone.classList.remove("is-spent");
@@ -429,6 +435,8 @@
           stone.classList.add("is-spent");
           pouch.classList.add("is-spent");
           showMissFeedback("Missed. No tries left.");
+          done = true;
+          fail();
         }
 
         function onHit() {

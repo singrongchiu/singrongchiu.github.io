@@ -24,6 +24,7 @@ Gameplay:
 - After the second launch, the pouch locks and cannot be dragged again (no third shot).
 - If the projectile collides with the target, target state changes from Intact → Hit and play positive hit feedback.
 - If the projectile misses, play gentle miss feedback.
+- On a second missed launch, mark the mini-game as failed and automatically advance to the next game.
 
 Win Condition:
 - The mini-game is completed when the target is Hit within the two allowed launches.

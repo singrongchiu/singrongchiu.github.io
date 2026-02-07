@@ -34,13 +34,11 @@ def test_node_core_logic_suite_passes() -> None:
             "node",
             "--test",
             "tests/framework_core.test.mjs",
-            "tests/lightbulb_minigame.test.mjs",
             "tests/eightball_minigame.test.mjs",
             "tests/game_plugin_contract.test.mjs",
             "tests/minigame_factories.test.mjs",
             "tests/slingshot_minigame.test.mjs",
             "tests/maze_runner_minigame.test.mjs",
-            "tests/baseball_meter_minigame.test.mjs",
             "tests/wires_minigame.test.mjs",
             "tests/letter_filling_minigame.test.mjs",
         ]

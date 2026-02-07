@@ -69,11 +69,9 @@ Current mini-game assignments:
 | --- | --- | --- | --- |
 | Burger Flipping | Uncommon | `#3f7fd6` | 2 |
 | Lamp Twist | Uncommon | `#3f7fd6` | 2 |
-| Pipe Grid | Uncommon | `#3f7fd6` | 2 |
 | Vanishing Path | Elite | `#d48732` | 3 |
 | Plant Watering | Uncommon | `#3f7fd6` | 2 |
 | Cooking | Uncommon | `#3f7fd6` | 2 |
-| Dino Petting | Uncommon | `#3f7fd6` | 2 |
 | Slingshot Launch | Elite | `#d48732` | 3 |
 | Maze Runner | Elite | `#58a05a` | 3 |
 | Baseball Meter Swing | Elite | `#d48732` | 3 |
@@ -89,13 +87,5 @@ Current mini-game assignments:
 # Disable Games
 Game enable/disable is configured in `src/minigames.js`.
 
-- Default disabled IDs live in `DEFAULT_DISABLED_GAME_IDS`.
-- Additional runtime-disabled IDs can be provided before app boot via `window.DisabledMiniGameIds`.
-
-Example:
-
-```html
-<script>
-  window.DisabledMiniGameIds = ["slingshot", "eightball"];
-</script>
-```
+- To disable a game, remove its descriptor entry from the `descriptors` array.
+- To re-enable a game, add the descriptor back and ensure the corresponding `src/minigame-*.js` file is loaded in `src/index.html`.

@@ -21,22 +21,6 @@
       apiName: "BurgerMiniGame"
     },
     {
-      id: "bulb",
-      title: "Lamp Twist",
-      icon: "💡",
-      hint: "Lightbulb mini-game slot",
-      rarity: RARITY.UNCOMMON,
-      apiName: "LightbulbMiniGame"
-    },
-    {
-      id: "pipe",
-      title: "Pipe Grid",
-      icon: "🧩",
-      hint: "Pipe mini-game slot",
-      rarity: RARITY.UNCOMMON,
-      apiName: "PipeTurningMiniGame"
-    },
-    {
       id: "vanish",
       title: "Vanishing Path",
       icon: "🧠",
@@ -53,22 +37,6 @@
       apiName: "PlantWaterMiniGame"
     },
     {
-      id: "cooking",
-      title: "🍳",
-      icon: "🧁",
-      hint: "Cooking mini-game slot",
-      rarity: RARITY.UNCOMMON,
-      apiName: "CookingMiniGame"
-    },
-    {
-      id: "dinosaur",
-      title: "Dino Petting",
-      icon: "🦖",
-      hint: "Dinosaur mini-game slot",
-      rarity: RARITY.UNCOMMON,
-      apiName: "DinosaurMiniGame"
-    },
-    {
       id: "slingshot",
       title: "Slingshot Launch",
       icon: "🎯",
@@ -83,14 +51,6 @@
       hint: "Maze runner mini-game slot",
       rarity: { label: "Elite", color: "#58a05a", bounty: 3 },
       apiName: "MazeRunnerMiniGame"
-    },
-    {
-      id: "baseball",
-      title: "Baseball Meter Swing",
-      icon: "⚾",
-      hint: "Baseball meter mini-game slot",
-      rarity: RARITY.ELITE,
-      apiName: "BaseballMeterMiniGame"
     },
     {
       id: "harvest",

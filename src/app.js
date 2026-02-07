@@ -6,6 +6,7 @@
   var chooseNext = core.chooseNext;
   var classifyCardSwipe = core.classifyCardSwipe;
   var updateWeight = core.updateWeight;
+  var computeRoundPacing = core.computeRoundPacing;
   var createSessionClock = core.createSessionClock;
   var clamp = core.clamp;
   var normalizeGamePlugin = core.normalizeGamePlugin;
@@ -13,8 +14,25 @@
 
   var ROUND_MS = 7000;
   var ENGAGED_ROUND_MS = 25000;
+  var ROUND_TIMEOUT_MIN_MS = 900;
+  var ENGAGED_ROUND_MIN_MS = 1500;
+  var ROUND_PACING_CFG = {
+    timeoutMinScale: 0.56,
+    motionMinScale: 0.68,
+    easePower: 1.2
+  };
+  var ROUND_STRESS_RAMP = {
+    timeoutStep: 0.14,
+    motionStep: 0.11,
+    timeoutMinScale: 0.16,
+    motionMinScale: 0.24
+  };
   var SESSION_SECONDS = 105;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
+  var SWIPE_VISUAL_START_PX = 26;
+  var SWIPE_VISUAL_VERTICAL_RATIO = 1.2;
+  var SWIPE_VISUAL_MAX_TRAVEL_RATIO = 0.42;
+  var SWIPE_VISUAL_RESET_MS = 170;
   var BG_START_1 = [215, 239, 193];
   var BG_END_1 = [255, 132, 138];
   var BG_START_2 = [183, 223, 157];
@@ -44,6 +62,8 @@
     roundTimer: null,
     roundMs: ROUND_MS,
     engagedRoundMs: ENGAGED_ROUND_MS,
+    timeoutScale: 1,
+    motionScale: 1,
     roundExtended: false,
     roundSeq: 0,
     lastId: null,
@@ -55,7 +75,15 @@
     plugins: normalizeRegistry(rawRegistry)
   };
 
-  var swipe = { active: false, x: 0, y: 0, t: 0, id: -1 };
+  var swipe = {
+    active: false,
+    x: 0,
+    y: 0,
+    t: 0,
+    id: -1,
+    visualActive: false,
+    settleTimer: 0
+  };
 
   function makeFallbackPlugin(meta, reason) {
     if (typeof createFallbackPlugin === "function") {
@@ -94,6 +122,57 @@
       return 0;
     }
     return Math.round(n);
+  }
+
+  function scaleDurationMs(ms, scale, minMs) {
+    var value = clampRoundMs(ms, 0);
+    var amount = clamp(scale, 0, 1);
+    var floor = Math.max(0, Number(minMs) || 0);
+    return Math.max(floor, Math.round(value * amount));
+  }
+
+  function getSessionProgress() {
+    if (!state.clock) {
+      return 0;
+    }
+    return clamp(state.clock.getElapsed() / SESSION_SECONDS, 0, 1);
+  }
+
+  function resolveRoundPacing(progress) {
+    if (typeof computeRoundPacing === "function") {
+      return computeRoundPacing(progress, ROUND_PACING_CFG);
+    }
+    var eased = Math.pow(clamp(progress, 0, 1), ROUND_PACING_CFG.easePower);
+    var timeoutScale = 1 - ((1 - ROUND_PACING_CFG.timeoutMinScale) * eased);
+    var motionScale = 1 - ((1 - ROUND_PACING_CFG.motionMinScale) * eased);
+    return {
+      timeoutScale: clamp(timeoutScale, ROUND_PACING_CFG.timeoutMinScale, 1),
+      motionScale: clamp(motionScale, ROUND_PACING_CFG.motionMinScale, 1)
+    };
+  }
+
+  function applyRoundPacing() {
+    var pacing = resolveRoundPacing(getSessionProgress());
+    var roundIndex = Math.max(0, state.roundSeq - 1);
+    var roundTimeoutScale = 1 - (roundIndex * ROUND_STRESS_RAMP.timeoutStep);
+    var roundMotionScale = 1 - (roundIndex * ROUND_STRESS_RAMP.motionStep);
+    state.timeoutScale = clamp(
+      pacing.timeoutScale * roundTimeoutScale,
+      ROUND_STRESS_RAMP.timeoutMinScale,
+      1
+    );
+    state.motionScale = clamp(
+      pacing.motionScale * roundMotionScale,
+      ROUND_STRESS_RAMP.motionMinScale,
+      1
+    );
+    document.documentElement.style.setProperty("--tempo-scale", state.motionScale.toFixed(3));
+  }
+
+  function pacedDelayMs(ms, minMs) {
+    var base = Math.max(0, Number(ms) || 0);
+    var floor = Math.max(0, Number(minMs) || 0);
+    return Math.max(floor, Math.round(base * state.motionScale));
   }
 
   function normalizeRegistry(list) {
@@ -205,6 +284,66 @@
     return null;
   }
 
+  function isTargetInsideGameBox(target) {
+    if (!target || typeof target.closest !== "function") {
+      return false;
+    }
+    return Boolean(target.closest(".card-body"));
+  }
+
+  function clearSwipeSettleTimer() {
+    if (swipe.settleTimer) {
+      window.clearTimeout(swipe.settleTimer);
+      swipe.settleTimer = 0;
+    }
+  }
+
+  function clearCardSwipeVisual() {
+    clearSwipeSettleTimer();
+    swipe.visualActive = false;
+    el.card.classList.remove("swipe-follow");
+    el.card.style.transition = "";
+    el.card.style.transform = "";
+  }
+
+  function shouldActivateSwipeVisual(dx, dy) {
+    if (Math.abs(dy) < SWIPE_VISUAL_START_PX) {
+      return false;
+    }
+    if (Math.abs(dy) <= Math.abs(dx) * SWIPE_VISUAL_VERTICAL_RATIO) {
+      return false;
+    }
+    return true;
+  }
+
+  function applyCardSwipeVisual(dx, dy) {
+    var cardHeight = Math.max(1, Number(el.card.clientHeight) || 1);
+    var maxTravel = Math.max(120, cardHeight * SWIPE_VISUAL_MAX_TRAVEL_RATIO);
+    var y = clamp(dy, -maxTravel, maxTravel);
+    var tilt = clamp(dx / 26, -6, 6);
+    clearSwipeSettleTimer();
+    swipe.visualActive = true;
+    el.card.classList.add("swipe-follow");
+    el.card.style.transition = "none";
+    el.card.style.transform =
+      "translate3d(0," + y.toFixed(1) + "px,0) rotate(" + tilt.toFixed(2) + "deg)";
+  }
+
+  function settleCardSwipeVisual() {
+    if (!swipe.visualActive) {
+      clearCardSwipeVisual();
+      return;
+    }
+    clearSwipeSettleTimer();
+    var resetMs = pacedDelayMs(SWIPE_VISUAL_RESET_MS, 90);
+    el.card.classList.remove("swipe-follow");
+    el.card.style.transition = "transform " + String(resetMs) + "ms cubic-bezier(.2,.78,.25,1)";
+    el.card.style.transform = "translate3d(0,0,0) rotate(0deg)";
+    swipe.settleTimer = window.setTimeout(function () {
+      clearCardSwipeVisual();
+    }, resetMs + 24);
+  }
+
   function clearCard() {
     if (typeof state.cleanup === "function") {
       try {
@@ -216,6 +355,7 @@
     state.cleanup = null;
     clearRegisteredControls();
     el.card.innerHTML = "";
+    clearCardSwipeVisual();
   }
 
   function showToast(text) {
@@ -225,7 +365,7 @@
     el.feedback.appendChild(toast);
     window.setTimeout(function () {
       toast.remove();
-    }, 760);
+    }, pacedDelayMs(760, 260));
   }
 
   function getPluginRarity(plugin) {
@@ -320,7 +460,7 @@
             if (isActiveRound()) {
               nextCard("success");
             }
-          }, 700);
+          }, pacedDelayMs(700, 220));
         });
       },
       fail: function () {
@@ -329,7 +469,7 @@
             if (isActiveRound()) {
               nextCard("fail");
             }
-          }, 120);
+          }, pacedDelayMs(120, 64));
         });
       },
       noteInteraction: function () {
@@ -387,14 +527,28 @@
     var body = document.createElement("div");
     body.className = "card-body";
 
+    var swipeZone = document.createElement("div");
+    swipeZone.className = "card-swipe-zone";
+    swipeZone.setAttribute("aria-hidden", "true");
+
     el.card.appendChild(head);
     el.card.appendChild(body);
+    el.card.appendChild(swipeZone);
     void el.card.offsetWidth;
     el.card.classList.add("enter");
 
     state.roundSeq += 1;
-    state.roundMs = clampRoundMs(plugin.timing && plugin.timing.roundMs, ROUND_MS);
-    state.engagedRoundMs = clampRoundMs(plugin.timing && plugin.timing.engagedRoundMs, ENGAGED_ROUND_MS);
+    applyRoundPacing();
+    state.roundMs = scaleDurationMs(
+      clampRoundMs(plugin.timing && plugin.timing.roundMs, ROUND_MS),
+      state.timeoutScale,
+      ROUND_TIMEOUT_MIN_MS
+    );
+    state.engagedRoundMs = scaleDurationMs(
+      clampRoundMs(plugin.timing && plugin.timing.engagedRoundMs, ENGAGED_ROUND_MS),
+      state.timeoutScale,
+      ENGAGED_ROUND_MIN_MS
+    );
     if (state.engagedRoundMs < state.roundMs) {
       state.engagedRoundMs = state.roundMs;
     }
@@ -477,6 +631,9 @@
     state.roundTimer = null;
     state.roundMs = ROUND_MS;
     state.engagedRoundMs = ENGAGED_ROUND_MS;
+    state.timeoutScale = 1;
+    state.motionScale = 1;
+    document.documentElement.style.setProperty("--tempo-scale", "1");
     state.roundExtended = false;
   }
 
@@ -517,6 +674,7 @@
     state.lastId = null;
     state.lastSkippedId = null;
     state.current = null;
+    state.roundSeq = 0;
     state.clock = createSessionClock(SESSION_SECONDS);
     state.clock.start();
     resetWeights();
@@ -584,6 +742,14 @@
 
   function bindSwipeGesture() {
     el.card.addEventListener("pointerdown", function (evt) {
+      if (state.running && state.current && isTargetInsideGameBox(evt.target)) {
+        extendRoundOnEngagement();
+        swipe.active = false;
+        swipe.id = -1;
+        swipe.visualActive = false;
+        clearSwipeSettleTimer();
+        return;
+      }
       var control = getControlForTarget(evt.target);
       if (control) {
         extendRoundOnEngagement();
@@ -598,12 +764,45 @@
       swipe.y = evt.clientY;
       swipe.t = Date.now();
       swipe.id = evt.pointerId;
+      swipe.visualActive = false;
+      clearSwipeSettleTimer();
+      if (typeof el.card.setPointerCapture === "function") {
+        try {
+          el.card.setPointerCapture(evt.pointerId);
+        } catch (err) {
+          // Ignore capture failures and keep gesture handling functional.
+        }
+      }
     }, true);
 
     function resetSwipe() {
+      var pointerId = swipe.id;
       swipe.active = false;
       swipe.id = -1;
+      swipe.visualActive = false;
+      if (pointerId !== -1 && typeof el.card.releasePointerCapture === "function") {
+        try {
+          el.card.releasePointerCapture(pointerId);
+        } catch (err) {
+          // Ignore release failures.
+        }
+      }
     }
+
+    el.card.addEventListener("pointermove", function (evt) {
+      if (!swipe.active || swipe.id !== evt.pointerId) {
+        return;
+      }
+      var dx = evt.clientX - swipe.x;
+      var dy = evt.clientY - swipe.y;
+      if (!swipe.visualActive && !shouldActivateSwipeVisual(dx, dy)) {
+        return;
+      }
+      applyCardSwipeVisual(dx, dy);
+      if (evt.cancelable) {
+        evt.preventDefault();
+      }
+    }, true);
 
     el.card.addEventListener("pointerup", function (evt) {
       if (!swipe.active || swipe.id !== evt.pointerId) {
@@ -612,16 +811,32 @@
       var dx = evt.clientX - swipe.x;
       var dy = evt.clientY - swipe.y;
       var dt = Date.now() - swipe.t;
+      var hadVisual = swipe.visualActive;
       resetSwipe();
       var direction = resolveCardSwipeDirection(dx, dy, dt);
       if (direction === "up") {
+        clearCardSwipeVisual();
         handleSkipGesture();
       } else if (direction === "down") {
+        clearCardSwipeVisual();
         handleRestoreLastSkippedGesture();
+      } else if (hadVisual) {
+        settleCardSwipeVisual();
       }
     }, true);
 
-    el.card.addEventListener("pointercancel", resetSwipe, true);
+    el.card.addEventListener("pointercancel", function (evt) {
+      if (!swipe.active || swipe.id !== evt.pointerId) {
+        return;
+      }
+      var hadVisual = swipe.visualActive;
+      resetSwipe();
+      if (hadVisual) {
+        settleCardSwipeVisual();
+      } else {
+        clearCardSwipeVisual();
+      }
+    }, true);
   }
 
   function renderStart() {
@@ -631,7 +846,7 @@
       "<div class='card-body'>" +
       "<div>" +
       "<div class='placeholder-icon'>🚜</div>" +
-      "<div class='hint'>Tap start, clear mini-games, swipe up to skip, and swipe down to reopen the last skipped game.</div>" +
+      "<div class='hint'>Tap start and play inside the game box. Swipe outside the game box (especially in the bottom area): up to skip, down to reopen the last skipped game.</div>" +
       "<div class='chip'>90-second session</div>" +
       "</div>" +
       "</div>" +

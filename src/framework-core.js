@@ -8,6 +8,11 @@
     minTravelPx: 90,
     verticalRatio: 1.3
   };
+  var DEFAULT_ROUND_PACING = {
+    timeoutMinScale: 0.56,
+    motionMinScale: 0.68,
+    easePower: 1.2
+  };
   var RARITY_PRESETS = {
     uncommon: { label: "Uncommon", color: "#3f7fd6", bounty: 2 },
     elite: { label: "Elite", color: "#d48732", bounty: 3 },
@@ -106,6 +111,37 @@
       next *= downFactor;
     }
     return clamp(next, min, max);
+  }
+
+  function computeRoundPacing(progress, config) {
+    var cfg = config && typeof config === "object" ? config : {};
+    var timeoutMinScale = Number(cfg.timeoutMinScale);
+    var motionMinScale = Number(cfg.motionMinScale);
+    var easePower = Number(cfg.easePower);
+    var clampedProgress = clamp(progress, 0, 1);
+    var eased = 0;
+    var timeoutScale = 1;
+    var motionScale = 1;
+
+    if (!Number.isFinite(timeoutMinScale) || timeoutMinScale <= 0 || timeoutMinScale > 1) {
+      timeoutMinScale = DEFAULT_ROUND_PACING.timeoutMinScale;
+    }
+    if (!Number.isFinite(motionMinScale) || motionMinScale <= 0 || motionMinScale > 1) {
+      motionMinScale = DEFAULT_ROUND_PACING.motionMinScale;
+    }
+    if (!Number.isFinite(easePower) || easePower <= 0) {
+      easePower = DEFAULT_ROUND_PACING.easePower;
+    }
+
+    eased = Math.pow(clampedProgress, easePower);
+    timeoutScale = 1 - ((1 - timeoutMinScale) * eased);
+    motionScale = 1 - ((1 - motionMinScale) * eased);
+
+    return {
+      progress: clampedProgress,
+      timeoutScale: clamp(timeoutScale, timeoutMinScale, 1),
+      motionScale: clamp(motionScale, motionMinScale, 1)
+    };
   }
 
   function createSessionClock(durationSec, nowFn) {
@@ -276,6 +312,7 @@
     chooseNext: chooseNext,
     classifyCardSwipe: classifyCardSwipe,
     updateWeight: updateWeight,
+    computeRoundPacing: computeRoundPacing,
     createSessionClock: createSessionClock,
     normalizeGamePlugin: normalizeGamePlugin,
     createFallbackPlugin: createFallbackPlugin

@@ -40,9 +40,7 @@ function loadMiniGames() {
         }
       },
       BurgerMiniGame: { createMiniGamePlugin: () => createPlugin("burger", "Burger Flipping") },
-      LightbulbMiniGame: { createMiniGamePlugin: () => createPlugin("bulb", "Lamp Twist") },
-      PipeTurningMiniGame: { createMiniGamePlugin: () => createPlugin("pipe", "Pipe Grid") },
-      DinosaurMiniGame: { createMiniGamePlugin: () => createPlugin("dinosaur", "Dino Petting") }
+      ConnectWiresMiniGame: { createMiniGamePlugin: () => createPlugin("wires", "Connect Wires") }
     },
     module: { exports: {} },
     exports: {}
@@ -57,7 +55,7 @@ test("registry includes all wired game modules", () => {
   const ids = games.map((game) => game.id);
 
   assert.equal(ids.includes("burger"), true);
-  assert.equal(ids.includes("bulb"), true);
-  assert.equal(ids.includes("pipe"), true);
-  assert.equal(ids.includes("dinosaur"), true);
+  assert.equal(ids.includes("wires"), true);
+  assert.equal(ids.includes("pipe"), false);
+  assert.equal(ids.includes("dinosaur"), false);
 });

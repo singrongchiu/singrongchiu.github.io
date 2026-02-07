@@ -9,6 +9,7 @@ const {
   chooseNext,
   classifyCardSwipe,
   updateWeight,
+  computeRoundPacing,
   createSessionClock,
   normalizeGamePlugin,
   createFallbackPlugin
@@ -34,6 +35,40 @@ test("updateWeight applies skip/success multipliers with clamping", () => {
   assert.equal(updateWeight(1, "success", cfg), 1.2);
   assert.equal(updateWeight(10, "success", cfg), 2);
   assert.equal(updateWeight(0.1, "skip", cfg), 0.5);
+});
+
+test("computeRoundPacing ramps down timeout and motion scales over progress", () => {
+  const start = computeRoundPacing(0);
+  const middle = computeRoundPacing(0.5);
+  const end = computeRoundPacing(1);
+
+  assert.equal(start.timeoutScale, 1);
+  assert.equal(start.motionScale, 1);
+  assert.ok(middle.timeoutScale < 1);
+  assert.ok(middle.motionScale < 1);
+  assert.ok(end.timeoutScale <= middle.timeoutScale);
+  assert.ok(end.motionScale <= middle.motionScale);
+  assert.equal(end.timeoutScale, 0.56);
+  assert.equal(end.motionScale, 0.68);
+});
+
+test("computeRoundPacing clamps invalid inputs and honors custom config", () => {
+  const clamped = computeRoundPacing(-5, {
+    timeoutMinScale: 2,
+    motionMinScale: -1,
+    easePower: 0
+  });
+  assert.equal(clamped.progress, 0);
+  assert.equal(clamped.timeoutScale, 1);
+  assert.equal(clamped.motionScale, 1);
+
+  const custom = computeRoundPacing(1, {
+    timeoutMinScale: 0.7,
+    motionMinScale: 0.8,
+    easePower: 1
+  });
+  assert.equal(custom.timeoutScale, 0.7);
+  assert.equal(custom.motionScale, 0.8);
 });
 
 test("chooseNext avoids immediate repeat when pool has two or more items", () => {
