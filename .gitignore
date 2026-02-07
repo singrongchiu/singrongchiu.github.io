@@ -1,2 +1,5 @@
 .venv/
 
+*.tar.br
+*.tar.gz
+*.tar.zst
