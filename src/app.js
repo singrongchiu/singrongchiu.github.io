@@ -8,7 +8,8 @@
   var createSessionClock = core.createSessionClock;
   var clamp = core.clamp;
 
-  var ROUND_MS = 12000;
+  var ROUND_MS = 7000;
+  var ENGAGED_ROUND_MS = 25000;
   var SESSION_SECONDS = 90;
   var WEIGHT_CFG = { min: 0.3, max: 3, upFactor: 1.15, downFactor: 0.85 };
   var BG_START_1 = [215, 239, 193];
@@ -46,6 +47,7 @@
     clock: null,
     tickTimer: null,
     roundTimer: null,
+    roundMaxMs: ROUND_MS,
     lastId: null,
     current: null,
     cleanup: null,
@@ -233,6 +235,7 @@
 
     state.current = game;
     state.lastId = game.id;
+    state.roundMaxMs = ROUND_MS;
     renderCard(game);
     el.status.textContent = "Running";
     state.roundTimer = window.setTimeout(function () {
@@ -240,11 +243,28 @@
     }, ROUND_MS);
   }
 
+  function extendRoundOnEngagement() {
+    if (!state.running || !state.current) {
+      return;
+    }
+    if (state.roundMaxMs >= ENGAGED_ROUND_MS) {
+      return;
+    }
+
+    state.roundMaxMs = ENGAGED_ROUND_MS;
+
+    window.clearTimeout(state.roundTimer);
+    state.roundTimer = window.setTimeout(function () {
+      nextCard("round-timeout");
+    }, ENGAGED_ROUND_MS);
+  }
+
   function stopTimers() {
     window.clearInterval(state.tickTimer);
     window.clearTimeout(state.roundTimer);
     state.tickTimer = null;
     state.roundTimer = null;
+    state.roundMaxMs = ROUND_MS;
   }
 
   function endSession(reason) {
@@ -304,6 +324,15 @@
   }
 
   function bindSwipeGesture() {
+    el.card.addEventListener("pointerdown", function (evt) {
+      var target = evt.target;
+      var gameControl = target && target.closest(".card-body button");
+      if (!gameControl) {
+        return;
+      }
+      extendRoundOnEngagement();
+    }, true);
+
     el.card.addEventListener("pointerdown", function (evt) {
       swipe.active = true;
       swipe.x = evt.clientX;
