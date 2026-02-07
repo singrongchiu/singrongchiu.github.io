@@ -241,6 +241,190 @@
     .bulb-chip {
       margin-top: 0;
     }
+    .plant-game {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      gap: 10px;
+      align-items: end;
+      justify-items: center;
+    }
+    .garden-bed {
+      width: min(300px, 95%);
+      height: 100%;
+      max-height: 220px;
+      position: relative;
+      z-index: 1;
+      border: 3px solid #6a8655;
+      border-radius: 16px;
+      background:
+        linear-gradient(to top, #9a6f42 0 30%, #d7bf95 30% 42%, #b7d79b 42% 100%);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: end;
+      gap: 6px;
+      padding: 10px 8px 8px;
+    }
+    .plant-slot {
+      position: relative;
+      border: 0;
+      background: none;
+      height: 100%;
+      min-height: 140px;
+      padding: 0;
+      touch-action: none;
+    }
+    .plant-pot {
+      position: absolute;
+      left: 50%;
+      bottom: 6px;
+      width: 52px;
+      height: 38px;
+      margin-left: -26px;
+      border-radius: 8px 8px 14px 14px;
+      border: 3px solid #644427;
+      background: linear-gradient(#d08f4f, #a86435);
+      box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.15);
+    }
+    .plant-stem {
+      position: absolute;
+      left: 50%;
+      bottom: 42px;
+      width: 8px;
+      height: 46px;
+      margin-left: -4px;
+      border-radius: 999px;
+      background: #4f7a34;
+      transition: transform .15s ease, background .15s ease;
+    }
+    .plant-leaf {
+      position: absolute;
+      bottom: 72px;
+      width: 30px;
+      height: 16px;
+      border: 3px solid #44692f;
+      background: #78b64d;
+      border-radius: 20px 20px 20px 4px;
+      transform-origin: center;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    }
+    .leaf-a {
+      left: 50%;
+      margin-left: -30px;
+      transform: rotate(-24deg);
+    }
+    .leaf-b {
+      left: 50%;
+      margin-left: 0;
+      transform: scaleX(-1) rotate(-24deg);
+    }
+    .plant-state {
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      margin-left: -14px;
+      width: 28px;
+      height: 22px;
+      border-radius: 999px;
+      border: 2px solid #587348;
+      background: #edf5d8;
+      font-size: 10px;
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      color: #2a4b2f;
+      letter-spacing: .2px;
+    }
+    .plant-slot.is-dry .plant-stem {
+      background: #647a4f;
+      transform: skewX(-5deg);
+    }
+    .plant-slot.is-dry .plant-leaf {
+      background: #99ad7f;
+      border-color: #6d8059;
+      transform: rotate(-38deg) scale(.96);
+    }
+    .plant-slot.is-dry .leaf-b {
+      transform: scaleX(-1) rotate(-38deg) scale(.96);
+    }
+    .plant-slot.is-dry .plant-state {
+      background: #f8e8d0;
+      border-color: #8e6b3a;
+      color: #8b4a2f;
+    }
+    .can-lane {
+      width: min(300px, 95%);
+      height: 92px;
+      border-radius: 14px;
+      border: 2px dashed #8aa270;
+      background: #eff8de;
+      position: relative;
+      z-index: 2;
+      overflow: visible;
+    }
+    .watering-can {
+      position: absolute;
+      left: 12px;
+      top: 24px;
+      z-index: 3;
+      width: 96px;
+      height: 58px;
+      border: 0;
+      background: none;
+      padding: 0;
+      touch-action: none;
+      cursor: grab;
+    }
+    .watering-can:active {
+      cursor: grabbing;
+    }
+    .can-body {
+      position: absolute;
+      left: 8px;
+      top: 14px;
+      width: 52px;
+      height: 34px;
+      border-radius: 8px;
+      border: 3px solid #335f84;
+      background: linear-gradient(#8fd1ff, #5ba8df);
+    }
+    .can-top {
+      position: absolute;
+      left: 16px;
+      top: 8px;
+      width: 34px;
+      height: 10px;
+      border-radius: 999px;
+      border: 3px solid #335f84;
+      background: #c6ecff;
+    }
+    .can-spout {
+      position: absolute;
+      right: 9px;
+      top: 19px;
+      width: 34px;
+      height: 12px;
+      border-radius: 0 999px 999px 0;
+      border: 3px solid #335f84;
+      border-left-width: 0;
+      background: #74b9ea;
+    }
+    .can-handle {
+      position: absolute;
+      left: 2px;
+      top: 12px;
+      width: 20px;
+      height: 30px;
+      border-radius: 999px 0 0 999px;
+      border: 3px solid #335f84;
+      border-right-width: 0;
+      background: none;
+    }
+    .plant-chip {
+      margin-top: 0;
+    }
     .btn {
       border: 2px solid #2f5f39;
       background: linear-gradient(#60b86c, #3b944d);
@@ -323,6 +507,7 @@
   </main>
   <script src="./framework-core.js"></script>
   <script src="./minigame-lightbulb.js"></script>
+  <script src="./minigame-plant.js"></script>
   <script src="./minigames.js"></script>
   <script src="./app.js"></script>
 </body>
