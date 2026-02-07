@@ -16,6 +16,7 @@
   var ENGAGED_ROUND_MS = 25000;
   var ROUND_TIMEOUT_MIN_MS = 2800;
   var ENGAGED_ROUND_MIN_MS = 5200;
+  var RESULT_MS = 1000;
   var ROUND_PACING_CFG = {
     timeoutMinScale: 0.56,
     motionMinScale: 0.68,
@@ -59,6 +60,7 @@
     timeoutScale: 1,
     motionScale: 1,
     roundExtended: false,
+    roundDone: false,
     roundSeq: 0,
     lastId: null,
     lastSkippedId: null,
@@ -341,14 +343,27 @@
     clearCardSwipeVisual();
   }
 
-  function showToast(text) {
+  function showToast(text, ms, kind) {
     var toast = document.createElement("div");
     toast.className = "toast";
     toast.textContent = String(text || "");
     el.feedback.appendChild(toast);
+    var duration = Number.isFinite(ms) ? ms : pacedDelayMs(760, 260);
+    if (Number.isFinite(ms)) {
+      toast.style.animationDuration = String(ms) + "ms";
+    }
+    if (kind) {
+      var bg = kind === "win" ? "#1f9d45" : kind === "timeout" ? "#e6b325" : "#d94444";
+      var border = kind === "win" ? "#0b6829" : kind === "timeout" ? "#b98710" : "#9c1f1f";
+      toast.style.background = bg;
+      toast.style.borderColor = border;
+      toast.style.fontSize = "22px";
+      toast.style.padding = "12px 20px";
+      toast.style.letterSpacing = "1px";
+    }
     window.setTimeout(function () {
       toast.remove();
-    }, pacedDelayMs(760, 260));
+    }, duration);
   }
 
   function getPluginRarity(plugin) {
@@ -368,29 +383,33 @@
     };
   }
 
-  function showCorrect(rarity) {
+  function showCorrect(rarity, ms) {
     var badge = rarity && rarity.label ? String(rarity.label) : "Uncommon";
     var bounty = rarity && Number.isFinite(rarity.bounty)
       ? Math.max(2, Math.round(rarity.bounty))
       : 2;
-    showToast("Correct! +" + String(bounty) + " (" + badge + ")");
+    showToast("WIN +" + String(bounty) + " (" + badge + ")", ms, "win");
   }
 
-  function burstConfetti() {
+  function burstConfetti(ms) {
     var colors = ["#f94", "#f66", "#3aa1ff", "#7dce5a", "#ffd739"];
+    var duration = Number.isFinite(ms) ? ms : null;
     var i = 0;
     for (i = 0; i < 14; i += 1) {
       var node = document.createElement("span");
       var x = (48 + Math.random() * 4) + "%";
-      var y = "22%";
+      var y = "10%";
       var dx = ((Math.random() - 0.5) * 220) + "px";
-      var dy = (50 + Math.random() * 180) + "px";
+      var dy = (60 + Math.random() * 200) + "px";
       node.className = "confetti";
       node.style.background = colors[i % colors.length];
       node.style.setProperty("--x", x);
       node.style.setProperty("--y", y);
       node.style.setProperty("--dx", dx);
       node.style.setProperty("--dy", dy);
+      if (duration) {
+        node.style.animationDuration = String(duration) + "ms";
+      }
       el.confetti.appendChild(node);
       node.addEventListener("animationend", function () {
         node.remove();
@@ -401,8 +420,50 @@
   function setRoundTimer(ms) {
     window.clearTimeout(state.roundTimer);
     state.roundTimer = window.setTimeout(function () {
-      nextCard("round-timeout");
+      showRoundResult("timeout", "round-timeout");
     }, ms);
+  }
+
+  function pauseSessionClock() {
+    if (!state.clock) {
+      return SESSION_SECONDS;
+    }
+    var remaining = state.clock.getRemaining();
+    state.clock = {
+      getRemaining: function () {
+        return remaining;
+      },
+      getElapsed: function () {
+        return Math.max(0, SESSION_SECONDS - remaining);
+      },
+      isExpired: function () {
+        return false;
+      }
+    };
+    return remaining;
+  }
+
+  function showRoundResult(kind, reason, rarity) {
+    if (!state.running || !state.current || state.roundDone) {
+      return;
+    }
+    state.roundDone = true;
+    window.clearTimeout(state.roundTimer);
+    var remaining = pauseSessionClock();
+    if (kind === "win") {
+      showCorrect(rarity, RESULT_MS);
+      burstConfetti(RESULT_MS);
+    } else {
+      showToast(kind === "timeout" ? "TIMEOUT" : "LOSE", RESULT_MS, kind);
+    }
+    window.setTimeout(function () {
+      if (!state.running) {
+        return;
+      }
+      state.clock = createSessionClock(remaining);
+      state.clock.start();
+      nextCard(reason);
+    }, RESULT_MS);
   }
 
   function extendRoundOnEngagement() {
@@ -421,7 +482,7 @@
     }
 
     function settleRound(effect) {
-      if (settled || !isActiveRound()) {
+      if (settled || !isActiveRound() || state.roundDone) {
         return false;
       }
       settled = true;
@@ -437,22 +498,12 @@
           state.weights[currentId] = updateWeight(state.weights[currentId], "success", WEIGHT_CFG);
           state.score += rarity.bounty;
           updateHud();
-          showCorrect(rarity);
-          burstConfetti();
-          window.setTimeout(function () {
-            if (isActiveRound()) {
-              nextCard("success");
-            }
-          }, pacedDelayMs(700, 220));
+          showRoundResult("win", "success", rarity);
         });
       },
       fail: function () {
         settleRound(function () {
-          window.setTimeout(function () {
-            if (isActiveRound()) {
-              nextCard("fail");
-            }
-          }, pacedDelayMs(120, 64));
+          showRoundResult("loss", "fail");
         });
       },
       noteInteraction: function () {
@@ -536,6 +587,7 @@
       state.engagedRoundMs = state.roundMs;
     }
     state.roundExtended = false;
+    state.roundDone = false;
 
     if (typeof plugin.mount === "function") {
       try {
@@ -675,14 +727,14 @@
   }
 
   function handleSkipGesture() {
-    if (!state.running || !state.current) {
+    if (!state.running || !state.current || state.roundDone) {
       return;
     }
     nextCard("skip");
   }
 
   function handleRestoreLastSkippedGesture() {
-    if (!state.running || !state.current || !state.lastSkippedId) {
+    if (!state.running || !state.current || !state.lastSkippedId || state.roundDone) {
       return;
     }
     if (state.current.id === state.lastSkippedId) {
@@ -725,6 +777,9 @@
 
   function bindSwipeGesture() {
     el.card.addEventListener("pointerdown", function (evt) {
+      if (state.roundDone) {
+        return;
+      }
       if (state.running && state.current && isTargetInsideGameBox(evt.target)) {
         extendRoundOnEngagement();
         swipe.active = false;
@@ -789,6 +844,11 @@
 
     el.card.addEventListener("pointerup", function (evt) {
       if (!swipe.active || swipe.id !== evt.pointerId) {
+        return;
+      }
+      if (state.roundDone) {
+        resetSwipe();
+        clearCardSwipeVisual();
         return;
       }
       var dx = evt.clientX - swipe.x;

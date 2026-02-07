@@ -82,9 +82,9 @@ function createMockNode() {
   };
 }
 
-test("drag pull clamps to backward-only x range", () => {
+test("drag pull clamps within the pull limits", () => {
   const pull = clampDragPull({ x: 40, y: 1000 });
-  assert.equal(pull.x, 0);
+  assert.equal(pull.x, 40);
   assert.equal(pull.y, DEFAULT_PULL.maxY);
 
   const pull2 = clampDragPull({ x: -999, y: -999 });
@@ -92,10 +92,10 @@ test("drag pull clamps to backward-only x range", () => {
   assert.equal(pull2.y, -DEFAULT_PULL.maxY);
 });
 
-test("release pull enforces a minimum backward launch", () => {
+test("release pull enforces a minimum pull distance", () => {
   const released = normalizeReleasePull({ x: 0, y: 3 });
-  assert.equal(released.x, -DEFAULT_PULL.minLaunchX);
-  assert.equal(released.y, 3);
+  assert.equal(released.x, 0);
+  assert.equal(released.y, DEFAULT_PULL.minLaunchX);
 });
 
 test("launch velocity always moves projectile forward", () => {

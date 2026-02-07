@@ -52,7 +52,7 @@
     var cfg = pullConfig(limits);
     var next = pull && typeof pull === "object" ? pull : {};
     return {
-      x: clamp(Number(next.x), -cfg.maxX, 0),
+      x: clamp(Number(next.x), -cfg.maxX, cfg.maxX),
       y: clamp(Number(next.y), -cfg.maxY, cfg.maxY)
     };
   }
@@ -60,8 +60,16 @@
   function normalizeReleasePull(pull, limits) {
     var cfg = pullConfig(limits);
     var next = clampDragPull(pull, cfg);
-    if (next.x > -cfg.minLaunchX) {
-      next.x = -cfg.minLaunchX;
+    var dx = Number(next.x) || 0;
+    var dy = Number(next.y) || 0;
+    var distance = Math.sqrt((dx * dx) + (dy * dy));
+    if (!Number.isFinite(distance) || distance === 0) {
+      return { x: -cfg.minLaunchX, y: 0 };
+    }
+    if (distance < cfg.minLaunchX) {
+      var scale = cfg.minLaunchX / distance;
+      next.x = dx * scale;
+      next.y = dy * scale;
     }
     return next;
   }
@@ -69,9 +77,13 @@
   function computeLaunchVelocity(pull, tuning) {
     var cfg = launchConfig(tuning);
     var safePull = normalizeReleasePull(pull);
+    var dx = -safePull.x;
+    var dy = -safePull.y;
+    var distance = Math.sqrt((dx * dx) + (dy * dy)) || 1;
+    var power = Math.max(cfg.minSpeedX, distance * cfg.power);
     return {
-      vx: Math.max(cfg.minSpeedX, -safePull.x * cfg.power),
-      vy: (-safePull.y * cfg.power) - cfg.lift
+      vx: (dx / distance) * power,
+      vy: ((dy / distance) * power) - cfg.lift
     };
   }
 
@@ -150,13 +162,16 @@
     var frames = Number.isFinite(cfg.stepFrames)
       ? Math.max(0.1, Number(cfg.stepFrames))
       : TRAJECTORY_STEP_FRAMES;
+    var timeScale = Number.isFinite(cfg.timeScale)
+      ? Math.max(0.1, Number(cfg.timeScale))
+      : PROJECTILE_TIME_SCALE;
     var gravity = Number.isFinite(cfg.gravity) ? Number(cfg.gravity) : DEFAULT_LAUNCH.gravity;
     var bounds = cfg.bounds && typeof cfg.bounds === "object" ? cfg.bounds : null;
     var points = [];
     var i = 0;
 
     for (i = 0; i < count; i += 1) {
-      var t = (i + 1) * frames;
+      var t = (i + 1) * frames * timeScale;
       var x = (Number(start.x) || 0) + ((Number(speed.vx) || 0) * t);
       var y = (Number(start.y) || 0) + ((Number(speed.vy) || 0) * t) + (0.5 * gravity * t * t);
       var visible = true;
@@ -259,9 +274,9 @@
             height: height,
             anchorX: width * 0.224,
             anchorY: height * 0.62,
-            leftForkX: width * 0.198,
-            rightForkX: width * 0.25,
-            forkY: height * 0.485
+            leftForkX: width * 0.206,
+            rightForkX: width * 0.338,
+            forkY: height * 0.452
           };
         }
 
