@@ -125,6 +125,113 @@
       background: #ecf6dd;
       display: inline-block;
     }
+    .burger-game {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      align-items: end;
+      justify-items: center;
+      gap: 10px;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2742%27 height=%2742%27 viewBox=%270 0 28 28%27%3E%3Crect x=%272%27 y=%279%27 width=%2710%27 height=%277%27 rx=%271.5%27 fill=%27%23e6edf3%27 stroke=%27%234d5964%27 stroke-width=%271.5%27/%3E%3Cpath d=%27M12 12h13%27 stroke=%27%237b4e28%27 stroke-width=%273%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M5 10v5M8 10v5%27 stroke=%27%234d5964%27 stroke-width=%271%27/%3E%3C/svg%3E") 6 20, pointer;
+    }
+    .grill-scene {
+      width: min(304px, 95%);
+      height: 100%;
+      max-height: 220px;
+      border: 3px solid #5a5d63;
+      border-radius: 16px;
+      background: linear-gradient(#7f838a, #61666d);
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: center;
+      justify-items: center;
+      padding: 10px 8px;
+      gap: 8px;
+      overflow: hidden;
+      cursor: inherit;
+    }
+    .grill-surface {
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.28) 0 5px,
+          rgba(255, 255, 255, 0.06) 5px 12px
+      );
+      pointer-events: none;
+    }
+    .burger-smoke-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .burger-smoke {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      margin-left: -7px;
+      margin-top: -7px;
+      border-radius: 50%;
+      background: rgba(241, 241, 241, 0.78);
+      box-shadow:
+        0 0 0 2px rgba(214, 214, 214, 0.3) inset,
+        0 0 8px rgba(214, 214, 214, 0.3);
+      animation: grillSmoke .72s ease-out forwards;
+    }
+    @keyframes grillSmoke {
+      from { opacity: .78; transform: translate(0, 0) scale(var(--ss)); }
+      to { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(calc(var(--ss) + .55)); }
+    }
+    .patty-slot {
+      position: relative;
+      width: min(84px, 100%);
+      aspect-ratio: 1 / 1;
+      border: 0;
+      background: none;
+      border-radius: 50%;
+      padding: 0;
+      touch-action: none;
+      z-index: 2;
+      cursor: inherit;
+    }
+    .patty-face {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 3px solid #493126;
+      background: radial-gradient(circle at 35% 28%, #cf8a72 0 30%, #af6148 58%, #813f31 100%);
+      box-shadow: inset -6px -8px 0 rgba(0, 0, 0, 0.22);
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .patty-mark {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 46%;
+      height: 46%;
+      margin-left: -23%;
+      margin-top: -23%;
+      border-radius: 50%;
+      border: 3px solid rgba(76, 42, 31, 0.65);
+      transform: scale(.85);
+      transition: border-color .16s ease;
+    }
+    .patty-slot.is-flipped .patty-face {
+      border-color: #3a281f;
+      background: radial-gradient(circle at 35% 26%, #8a5941 0 28%, #694130 58%, #4e3024 100%);
+      transform: rotateY(180deg);
+    }
+    .patty-slot.is-flipped .patty-mark {
+      border-color: rgba(36, 18, 12, 0.62);
+    }
+    .burger-chip {
+      margin-top: 0;
+    }
     .bulb-game {
       width: 100%;
       height: 100%;
@@ -506,6 +613,7 @@
     <div class="swipe-cue">^^^ SWIPE UP TO SKIP ^^^</div>
   </main>
   <script src="./framework-core.js"></script>
+  <script src="./minigame-burger.js"></script>
   <script src="./minigame-lightbulb.js"></script>
   <script src="./minigame-plant.js"></script>
   <script src="./minigames.js"></script>

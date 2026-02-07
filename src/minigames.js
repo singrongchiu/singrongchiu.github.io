@@ -1,6 +1,7 @@
 (function () {
   "use strict";
 
+  var burgerApi = window.BurgerMiniGame || null;
   var lightbulbApi = window.LightbulbMiniGame || null;
   var plantApi = window.PlantWaterMiniGame || null;
 
@@ -22,6 +23,17 @@
   }
 
   function buildGame(game) {
+    if (
+      game.id === "burger" &&
+      burgerApi &&
+      typeof burgerApi.createBurgerGame === "function"
+    ) {
+      try {
+        return burgerApi.createBurgerGame();
+      } catch (err) {
+        return makePlaceholder(game);
+      }
+    }
     if (
       game.id === "bulb" &&
       lightbulbApi &&
@@ -48,7 +60,7 @@
   }
 
   var miniGames = [
-    { id: "burger", label: "Burger Station", weight: 1, icon: "\ud83c\udf54", hint: "Burger mini-game slot" },
+    { id: "burger", label: "Burger Flipping", weight: 1, icon: "\ud83c\udf54", hint: "Burger mini-game slot" },
     { id: "bulb", label: "Lamp Twist", weight: 1, icon: "\ud83d\udca1", hint: "Lightbulb mini-game slot" },
     { id: "pipe", label: "Pipe Grid", weight: 1, icon: "\ud83e\udde9", hint: "Pipe mini-game slot" },
     { id: "plant", label: "Plant Watering", weight: 1, icon: "\ud83c\udf31", hint: "Plant mini-game slot" }
