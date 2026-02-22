@@ -883,13 +883,13 @@
   }
 
   function renderStart() {
-    el.status.textContent = "Tap to begin";
+    el.status.textContent = "SPACEBAR or Tap to begin";
     el.card.innerHTML =
       "<div class='card-head'>Farm Flick</div>" +
       "<div class='card-body'>" +
       "<div>" +
       "<div class='placeholder-icon'>🚜</div>" +
-      "<div class='hint'>Tap start and play inside the game box. Swipe outside the game box (especially in the bottom area): up to skip, down to reopen the last skipped game.</div>" +
+      "<div class='hint'>Press SPACEBAR or tap start and play inside the game box. Swipe outside the game box (especially in the bottom area): up to skip, down to reopen the last skipped game.</div>" +
       "<div class='chip'>90-second session</div>" +
       "</div>" +
       "</div>" +
